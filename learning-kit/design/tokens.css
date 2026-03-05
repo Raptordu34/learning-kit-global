@@ -1,0 +1,32 @@
+/* learning-kit/design/tokens.css */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;800&display=swap');
+
+:root {
+    /* Couleurs */
+    --bg-color:        #0f172a;
+    --glass-bg:        rgba(30, 41, 59, 0.52);
+    --glass-border:    rgba(255, 255, 255, 0.14);
+    --glass-shadow:    0 20px 60px rgba(0,0,0,0.55), 0 6px 18px rgba(0,0,0,0.35);
+    --glass-shine:     linear-gradient(160deg, rgba(255,255,255,0.18) 0%, rgba(255,255,255,0.04) 35%, transparent 60%);
+    --accent:          #f97316;
+    --accent-dark:     #ea580c;
+    --accent-glow:     rgba(249, 115, 22, 0.4);
+    --text-primary:    #f8fafc;
+    --text-secondary:  #94a3b8;
+    --text-muted:      #cbd5e1;
+    --text-body:       #e2e8f0;
+
+    /* Typographie */
+    --font-family:     'Inter', system-ui, -apple-system, sans-serif;
+
+    /* Espacements */
+    --spacing-xs:      0.5rem;
+    --spacing-sm:      1rem;
+    --spacing-md:      1.5rem;
+    --spacing-lg:      2.5rem;
+
+    /* Border radius */
+    --radius-sm:       8px;
+    --radius-md:       14px;
+    --radius-lg:       24px;
+}
