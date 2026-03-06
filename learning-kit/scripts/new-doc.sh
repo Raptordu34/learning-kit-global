@@ -62,6 +62,13 @@ fi
 # Calculer les chemins relatifs vers le learning-kit
 REL_KIT=$(python3 -c "import os.path; print(os.path.relpath('$KIT_DIR', '$DEST'))" 2>/dev/null || echo "../learning-kit")
 
+# Corriger le chemin CSS dans index.html (le template pointe vers ../../layouts/ relatif à sa position d'origine)
+sed -i "s|../../layouts/|$REL_KIT/layouts/|g" "$DEST/index.html"
+
+# Copier les assets du template dans le dossier destination
+cp "$TEMPLATE_DIR/components.css" "$DEST/components.css"
+[ -f "$TEMPLATE_DIR/section-utils.js" ] && cp "$TEMPLATE_DIR/section-utils.js" "$DEST/section-utils.js"
+
 # Générer un CLAUDE.md local pour ce document
 cat > "$DEST/CLAUDE.md" << EOF
 # $TITRE
@@ -72,6 +79,7 @@ cat > "$DEST/CLAUDE.md" << EOF
 ## Instructions LLM
 
 **Design system :** lire \`$REL_KIT/design/DESIGN_SYSTEM.md\`
+**SVG catalog :** lire \`$REL_KIT/design/svg/CATALOG.md\` avant d'ajouter tout élément graphique
 **Prompt template :** lire \`$REL_KIT/templates/$TYPE/PROMPT.md\`
 **Exemple de section :** voir \`section-EXAMPLE.html\` dans ce dossier
 
@@ -92,6 +100,8 @@ echo "Document créé : $DEST"
 echo ""
 echo "  index.html          — shell du document (à compléter : nav-links)"
 echo "  section-EXAMPLE.html — exemple de section à dupliquer"
+echo "  components.css      — styles des composants (copié du template)"
+echo "  section-utils.js    — utilitaires section (si disponible pour ce type)"
 echo "  CLAUDE.md           — instructions LLM pour ce document"
 echo ""
 echo "Prochaines étapes :"

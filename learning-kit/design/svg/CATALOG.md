@@ -60,5 +60,9 @@ stroke-width="2.5"     ← diagrammes standalone (viewBox > 200)
 | Fichier | Contenu |
 |---|---|
 | `arrows.md` | Flèches : droite, gauche, haut, bas, courbe, double-tête, bidirectionnel |
-
-> D'autres catégories seront ajoutées ici au fur et à mesure (shapes, connectors, nodes...).
+| `lines.md` | Traits : horizontal/vertical thin/regular/thick, pointillés, tiretés, animés (flux) |
+| `braces.md` | Accolades courbes : brace-top, brace-bottom, brace-left, brace-right, tailles variables |
+| `nodes.md`    | Nœuds : terminal (pill), process (rect), decision (losange), io (parallélogramme), dot |
+| `callouts.md` | Bulles d'annotation : right, left, top, bottom + bracket-label vertical/horizontal |
+| `arch.md`     | Architecture : client, server, database (cylindre), cloud, microservice (hex), queue |
+| `charts.md`   | Graphiques : bar-h, bar-v, donut (stroke-dasharray), line chart, sparkline |

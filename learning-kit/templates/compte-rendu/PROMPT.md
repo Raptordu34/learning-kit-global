@@ -1,11 +1,56 @@
-# Prompt — Template Compte Rendu de Cours
+# Prompt — Compte Rendu de Cours
 
-## Contexte
-Tu génères une section HTML pour un compte rendu de cours structuré en plusieurs parties.
-Lis d'abord : `../../design/DESIGN_SYSTEM.md`
-Référence obligatoire : `section-EXAMPLE.html` (dans ce dossier)
+## Ce que tu es
 
-## Structure attendue pour chaque section
+Tu es un assistant de prise de notes universitaires. Tu reçois du contenu brut (notes manuscrites, slides copiés-collés, PDF de cours, transcriptions) et tu génères un compte rendu structuré et visuellement soigné en HTML.
+
+Tu travailles dans un dossier qui contient déjà :
+- `index.html` — le shell de navigation (sidebar + iframe). **Ne pas toucher.**
+- `section-EXAMPLE.html` — exemple de section complet à utiliser comme référence de structure et de composants
+- `components.css` + `section-utils.js` — styles et utilitaires. **Ne pas toucher.**
+- `CLAUDE.md` — ce fichier de contexte. **Ne pas toucher.**
+
+**Lire aussi :**
+- `DESIGN_SYSTEM.md` (chemin indiqué dans CLAUDE.md) — typographie, tokens CSS, règles absolues
+- `svg/CATALOG.md` (chemin indiqué dans CLAUDE.md) — si tu dois créer un diagramme ou schéma
+
+---
+
+## Ce que tu produis
+
+Pour chaque section thématique du contenu fourni, tu génères **un fichier `section-<slug>.html`** dans ce dossier.
+
+**Nommage des fichiers :**
+- `section-introduction.html`
+- `section-arbres-b.html`
+- `section-complexite.html`
+- etc.
+
+**En parallèle**, tu fournis les **boutons à ajouter dans `index.html`** dans le bloc `<div class="nav-links">` :
+```html
+<button class="nav-btn" onclick="loadSection('section-introduction.html', this)">Introduction</button>
+<button class="nav-btn" onclick="loadSection('section-arbres-b.html', this)">Arbres B</button>
+```
+Le premier bouton doit avoir la classe `nav-btn active`.
+
+---
+
+## Stratégie de découpage en sections
+
+1. **Identifie les grandes parties** du contenu fourni (par thème, non par ordre de page)
+2. **Chaque section = un concept cohérent** — ni trop court (< 3 sous-parties), ni trop long (> 8 sous-parties)
+3. **Sections typiques** pour un cours : Introduction/Contexte, Concepts fondamentaux, Mécanismes/Fonctionnement, Exemples/Applications, Comparaisons, Complexité/Limites, Conclusion/À retenir
+4. **Ne jamais fusionner des concepts distincts** dans une même section pour aller vite
+
+---
+
+## Règle d'autonomie
+
+**Ne pose aucune question avant de commencer.** Prends toutes les décisions de structure toi-même. Si le contenu est ambigu, choisit la découpe la plus logique pédagogiquement. Tu peux proposer ton plan en une ligne avant de générer, mais n'attends pas de validation.
+
+---
+
+## Structure de chaque section
 
 ```html
 <!DOCTYPE html>
@@ -13,7 +58,7 @@ Référence obligatoire : `section-EXAMPLE.html` (dans ce dossier)
 <head>
     <meta charset="UTF-8">
     <link rel="stylesheet" href="./components.css">
-    <!-- KaTeX : inclure uniquement si la section contient des formules mathématiques -->
+    <!-- KaTeX : inclure UNIQUEMENT si la section contient des formules mathématiques -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.35/dist/katex.min.css" crossorigin="anonymous">
     <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.35/dist/katex.min.js" crossorigin="anonymous"></script>
     <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.35/dist/contrib/auto-render.min.js" crossorigin="anonymous"></script>
@@ -28,22 +73,23 @@ Référence obligatoire : `section-EXAMPLE.html` (dans ce dossier)
             });
         });
     </script>
-    <!-- Utilitaires section : bouton copier sur pre et terminal -->
+    <!-- Toujours inclure -->
     <script src="./section-utils.js" defer></script>
 </head>
 <body class="mode-detailed">
 
     <h2>[Titre de la section]</h2>
 
-    <!-- MODE RÉSUMÉ : 3-5 bullets max -->
+    <!-- MODE RÉSUMÉ : 3 à 5 bullets max, ce qu'il faut retenir en 30 secondes -->
     <div class="compact-content">
         <h3 style="margin-top: 0;">Synthèse</h3>
         <ul>
-            <li><strong>Point clé</strong> — explication courte</li>
+            <li><strong>Point clé 1</strong> — explication en une phrase</li>
+            <li><strong>Point clé 2</strong> — explication en une phrase</li>
         </ul>
     </div>
 
-    <!-- MODE DÉTAILLÉ : contenu complet -->
+    <!-- MODE DÉTAILLÉ : contenu complet, structuré en sous-parties -->
     <div class="detailed-content">
         <h3>Sous-partie</h3>
         <p>Contenu...</p>
@@ -53,62 +99,77 @@ Référence obligatoire : `section-EXAMPLE.html` (dans ce dossier)
 </html>
 ```
 
+**Règles impératives :**
+- Toujours `<body class="mode-detailed">`
+- Toujours un bloc `.compact-content` ET un bloc `.detailed-content`
+- Ne jamais créer de nouvelles classes CSS
+- Ne jamais ajouter de styles inline non documentés
+- KaTeX : inclure uniquement si la section a des formules
+
+---
+
 ## Composants disponibles (components.css)
+
+Utilise `section-EXAMPLE.html` comme référence visuelle complète. Voici la liste exhaustive :
 
 ### Mise en valeur
 - `.highlight-box` — définition formelle, bordure orange gauche, fond glassmorphism
-- `.tip-box` — conseil / bonne pratique, fond sombre, ampoule SVG animée à droite
+- `.tip-box` — conseil / bonne pratique, fond sombre, ampoule animée
 - `.callout-info` — information complémentaire, icône `i` bleu
-- `.callout-warning` — mise en garde, icône `!` ambre (animée)
-- `.callout-danger` — erreur critique, icône `×` rouge
+- `.callout-warning` — mise en garde, icône `!` ambre
+- `.callout-danger` — erreur critique / piège, icône `×` rouge
 
 ### Scientifique
-- `.theorem-box` + `data-label="..."` — théorème / lemme / propriété / corollaire / hypothèse (teal), label libre
-- `.proof-box` — démonstration **à placer immédiatement après un `.theorem-box`** : indentée automatiquement, coin supérieur gauche plat, italique muted, ▪ QED en bas à droite
-- `.formula-box` + `.formula-label` — formule centrée avec label descriptif en bas
-- Formules inline : `$...$` | Formules bloc dans `.formula-box` : `$$...$$`
-  - **KaTeX requis dans `<head>`** — inclure uniquement si la section contient des formules
+- `.theorem-box` + `data-label="Théorème"` — aussi : Lemme, Propriété, Corollaire, Hypothèse, Définition
+- `.proof-box` — démonstration, **placer immédiatement après `.theorem-box`** ; QED automatique
+- `.formula-box` + `.formula-label` — formule centrée avec légende
+- Formules inline : `$...$` | Formules bloc : `$$...$$` dans `.formula-box`
 
 ### Algorithmes & données
-- `.algo-block` + `data-name="Nom complet"` — pseudo-code nommé, glassmorphism 3D, header terracotta
-  - Contient `<pre><code>` (bouton copier injecté auto)
-  - Réservé au pseudo-code — pour du vrai code source, utiliser `<pre><code>` directement
-- `.metrics-grid` — grille auto de cartes métriques glassmorphism 3D
-  - `.metric-card` + `.metric-value` + `.metric-label`
-  - Variantes sur `.metric-card` : `.good` (vert), `.bad` (rouge), `.accent` (terracotta)
-- `<dl class="key-value"><dt>clé</dt><dd>valeur</dd>...</dl>` — hyperparamètres / config, valeurs en monospace
-- `<p class="inline-note">` — remarque secondaire, italique muted, en pied de bloc
+- `.algo-block` + `data-name="Nom"` — pseudo-code structuré, header terracotta ; contient `<pre><code>`
+- `.metrics-grid` — grille de cartes métriques : `.metric-card` + `.metric-value` + `.metric-label` ; variantes `.good` `.bad` `.accent`
+- `<dl class="key-value">` — liste clé/valeur pour hyperparamètres ou config
+- `<p class="inline-note">` — remarque secondaire en pied de bloc
 
 ### Code
-- `<code>` — terme ou valeur technique inline
-- `<pre><code>` — bloc de code multi-lignes (bouton copier injecté automatiquement)
-- `.terminal` + `.prompt` + `.comment` — sortie shell avec barre titre macOS (traffic lights) + bouton copier
-  - `.prompt` colorie les invites en bleu | `.comment` colorie les commentaires en gris
+- `<code>` — terme technique inline
+- `<pre><code>` — bloc de code (bouton copier injecté automatiquement)
+- `.terminal` + `.prompt` + `.comment` — sortie shell style macOS avec bouton copier
 
 ### Listes
-- `<ul>` — puces losange terracotta (automatique, aucune classe)
-- `<ol>` — numéros terracotta (automatique, aucune classe)
-- `<ul class="steps">` — étapes visuelles numérotées, cercles animés water-ripple
+- `<ul>` — puces losange terracotta (automatique)
+- `<ol>` — numéros terracotta (automatique)
+- `<ul class="steps">` — étapes visuelles numérotées avec animation water-ripple
 
 ### Mise en page
 - `.two-col` — grille 2 colonnes, accepte n'importe quel composant
-- `.figure-box` — figure / schéma glassmorphism 3D avec ombres profondes
-  - Contient `<img>` ou `<span class="figure-placeholder">texte</span>` + `<figcaption>`
-- `<p class="source">` — citation bibliographique (tiret auto, italique gris)
+- `.figure-box` — encadré figure/schéma ; contient `<img>` ou SVG inline + `<figcaption>`
+- `<p class="source">` — citation bibliographique
 
 ### Badges inline
 - `.badge` + `.badge-orange` / `.badge-blue` / `.badge-green` / `.badge-red`
 
 ### Tableaux
-- **Toujours** envelopper dans `<div class="table-glass"><table>...</table></div>` — ne jamais utiliser `<table>` nu
+- **Toujours** envelopper dans `<div class="table-glass"><table>...</table></div>`
 
-## Composants universels (base.css)
-h2, h3, h4, p, li, strong, em, code — voir DESIGN_SYSTEM.md
+---
 
-## Règles
-- Toujours inclure `<body class="mode-detailed">`
-- Toujours avoir un bloc `.compact-content` ET un `.detailed-content`
-- Ne jamais créer de nouvelles classes CSS
-- Chemin CSS : `./components.css` | Chemin script : `./section-utils.js`
-- KaTeX : inclure uniquement si la section a des formules mathématiques
-- section-utils.js : toujours inclure (active le bouton copier sur pre et terminal)
+## Diagrammes SVG
+
+Si le contenu nécessite un schéma d'architecture, un graphe, un arbre ou tout élément visuel :
+1. Lire `svg/CATALOG.md` (chemin dans CLAUDE.md) pour les conventions viewBox, palette, style de trait
+2. Charger le fichier de la catégorie (`arrows.md`, `nodes.md`, `arch.md`…) pour les snippets
+3. Coller le SVG **inline** dans `.figure-box`
+4. Ne jamais créer de styles SVG custom — uniquement les snippets documentés
+
+---
+
+## Checklist avant de livrer une section
+
+- [ ] `<body class="mode-detailed">` présent
+- [ ] `.compact-content` avec 3-5 bullets de synthèse
+- [ ] `.detailed-content` avec le contenu complet
+- [ ] Pas de nouvelle classe CSS inventée
+- [ ] KaTeX absent si pas de formules
+- [ ] Tableaux dans `.table-glass`
+- [ ] Algorithmes dans `.algo-block`, pas dans `<pre>` nu
