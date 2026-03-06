@@ -31,12 +31,13 @@ Bibliothèque de référence SVG pour la génération de diagrammes, schémas et
 ```
 stroke-linecap="round"
 stroke-linejoin="round"
-stroke-width="2"       ← connecteurs fins
-stroke-width="2.5"     ← flèches proéminentes
+stroke-width="2"       ← icônes 24×24 et connecteurs 200×40
+stroke-width="2.5"     ← diagrammes standalone (viewBox > 200)
 ```
 
 ### Anatomie d'une flèche
 
+- **Racine** : `<svg fill="none" xmlns="http://www.w3.org/2000/svg">` — toujours `fill="none"` et `xmlns` sur la racine
 - **Corps** : `<line>` ou `<path>` avec `fill="none"` et `stroke="#d67556"`
 - **Tête** : `<polygon>` avec `fill="#d67556"` et `stroke="none"` (triangle plein)
 
@@ -59,3 +60,5 @@ stroke-width="2.5"     ← flèches proéminentes
 | Fichier | Contenu |
 |---|---|
 | `arrows.md` | Flèches : droite, gauche, haut, bas, courbe, double-tête, bidirectionnel |
+
+> D'autres catégories seront ajoutées ici au fur et à mesure (shapes, connectors, nodes...).
