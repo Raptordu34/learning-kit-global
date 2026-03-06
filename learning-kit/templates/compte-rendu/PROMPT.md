@@ -63,30 +63,44 @@ Référence obligatoire : `section-EXAMPLE.html` (dans ce dossier)
 - `.callout-danger` — erreur critique, icône `×` rouge
 
 ### Scientifique
-- `.theorem-box` + `data-label="Théorème"` — théorème / lemme / propriété / corollaire (teal), le label est libre
-- `.formula-box` + `.formula-label` — formule mathématique centrée avec label
-- Formules inline : `$...$` | Formules bloc : `$$...$$` (nécessite KaTeX dans le head)
+- `.theorem-box` + `data-label="..."` — théorème / lemme / propriété / corollaire / hypothèse (teal), label libre
+- `.proof-box` — démonstration **à placer immédiatement après un `.theorem-box`** : indentée automatiquement, coin supérieur gauche plat, italique muted, ▪ QED en bas à droite
+- `.formula-box` + `.formula-label` — formule centrée avec label descriptif en bas
+- Formules inline : `$...$` | Formules bloc dans `.formula-box` : `$$...$$`
+  - **KaTeX requis dans `<head>`** — inclure uniquement si la section contient des formules
+
+### Algorithmes & données
+- `.algo-block` + `data-name="Nom complet"` — pseudo-code nommé, glassmorphism 3D, header terracotta
+  - Contient `<pre><code>` (bouton copier injecté auto)
+  - Réservé au pseudo-code — pour du vrai code source, utiliser `<pre><code>` directement
+- `.metrics-grid` — grille auto de cartes métriques glassmorphism 3D
+  - `.metric-card` + `.metric-value` + `.metric-label`
+  - Variantes sur `.metric-card` : `.good` (vert), `.bad` (rouge), `.accent` (terracotta)
+- `<dl class="key-value"><dt>clé</dt><dd>valeur</dd>...</dl>` — hyperparamètres / config, valeurs en monospace
+- `<p class="inline-note">` — remarque secondaire, italique muted, en pied de bloc
 
 ### Code
-- `<code>` — code inline
-- `<pre><code>` — bloc de code multi-lignes (bouton copier automatique via section-utils.js)
-- `.terminal` + `.prompt` + `.comment` — sortie shell, traffic lights macOS, bouton copier auto
+- `<code>` — terme ou valeur technique inline
+- `<pre><code>` — bloc de code multi-lignes (bouton copier injecté automatiquement)
+- `.terminal` + `.prompt` + `.comment` — sortie shell avec barre titre macOS (traffic lights) + bouton copier
+  - `.prompt` colorie les invites en bleu | `.comment` colorie les commentaires en gris
 
 ### Listes
-- `<ul>` — puces losange orange (style automatique)
-- `<ol>` — numéros orange (style automatique)
-- `<ul class="steps">` — étapes numérotées visuelles avec cercles animés
+- `<ul>` — puces losange terracotta (automatique, aucune classe)
+- `<ol>` — numéros terracotta (automatique, aucune classe)
+- `<ul class="steps">` — étapes visuelles numérotées, cercles animés water-ripple
 
 ### Mise en page
-- `.two-col` — grille 2 colonnes (contient n'importe quel composant)
-- `.figure-box` + `.figure-placeholder` / `<img>` + `<figcaption>` — figure/schéma glassmorphism
-- `.source` — citation bibliographique (`<p class="source">`)
+- `.two-col` — grille 2 colonnes, accepte n'importe quel composant
+- `.figure-box` — figure / schéma glassmorphism 3D avec ombres profondes
+  - Contient `<img>` ou `<span class="figure-placeholder">texte</span>` + `<figcaption>`
+- `<p class="source">` — citation bibliographique (tiret auto, italique gris)
 
 ### Badges inline
-- `.badge .badge-orange` / `.badge-blue` / `.badge-green` / `.badge-red`
+- `.badge` + `.badge-orange` / `.badge-blue` / `.badge-green` / `.badge-red`
 
 ### Tableaux
-- Toujours envelopper dans `<div class="table-glass"><table>...</table></div>`
+- **Toujours** envelopper dans `<div class="table-glass"><table>...</table></div>` — ne jamais utiliser `<table>` nu
 
 ## Composants universels (base.css)
 h2, h3, h4, p, li, strong, em, code — voir DESIGN_SYSTEM.md

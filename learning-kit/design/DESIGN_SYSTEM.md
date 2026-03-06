@@ -69,3 +69,14 @@
 ## Comportement attendu par type
 
 Voir `templates/<type>/PROMPT.md` pour les composants spécifiques à chaque template.
+
+## Bibliothèque SVG (diagrammes)
+
+Voir `svg/CATALOG.md` pour les conventions et l'index des catégories.
+
+Le LLM doit :
+1. Lire `svg/CATALOG.md` pour comprendre les conventions (viewBox, palette, style)
+2. Charger `svg/arrows.md` (ou autre catégorie) pour les snippets
+3. Copier le snippet SVG directement inline dans le `section-*.html`
+
+Ne jamais créer de nouveaux styles SVG — utiliser uniquement les éléments documentés dans ce catalogue.
