@@ -49,27 +49,38 @@ fi
 
 mkdir -p "$DEST"
 
-# Copier les fichiers du template
+# ── Copier les fichiers du template ──────────────────────────────────────────
 cp "$TEMPLATE_DIR/index.html" "$DEST/index.html"
 cp "$TEMPLATE_DIR/section-EXAMPLE.html" "$DEST/section-EXAMPLE.html"
 
-# Remplacer les placeholders dans index.html
-if command -v sed >/dev/null 2>&1; then
-    sed -i "s/{{TITRE}}/$TITRE/g" "$DEST/index.html"
-    sed -i "s/{{SOUS_TITRE}}/Master Big Data $(date +%Y-%m-%d)/g" "$DEST/index.html"
-fi
+# ── Copier design et layout (document self-contained) ────────────────────────
+mkdir -p "$DEST/design"
+cp "$KIT_DIR/design/tokens.css" "$DEST/design/tokens.css"
+cp "$KIT_DIR/design/base.css"   "$DEST/design/base.css"
+cp -r "$KIT_DIR/design/svg"     "$DEST/design/svg"
+cp "$KIT_DIR/design/DESIGN_SYSTEM.md" "$DEST/design/DESIGN_SYSTEM.md"
+cp "$TEMPLATE_DIR/PROMPT.md"           "$DEST/PROMPT.md"
 
-# Calculer les chemins relatifs vers le learning-kit
-REL_KIT=$(python3 -c "import os.path; print(os.path.relpath('$KIT_DIR', '$DEST'))" 2>/dev/null || echo "../learning-kit")
+mkdir -p "$DEST/layouts"
+cp "$KIT_DIR/layouts/"*.css "$DEST/layouts/"
 
-# Corriger le chemin CSS dans index.html (le template pointe vers ../../layouts/ relatif à sa position d'origine)
-sed -i "s|../../layouts/|$REL_KIT/layouts/|g" "$DEST/index.html"
-
-# Copier les assets du template dans le dossier destination
+# ── Copier les assets du template ────────────────────────────────────────────
 cp "$TEMPLATE_DIR/components.css" "$DEST/components.css"
 [ -f "$TEMPLATE_DIR/section-utils.js" ] && cp "$TEMPLATE_DIR/section-utils.js" "$DEST/section-utils.js"
 
-# Générer un CLAUDE.md local pour ce document
+# ── Corriger les chemins dans les fichiers copiés ────────────────────────────
+# index.html : ../../layouts/ → ./layouts/
+sed -i "s|../../layouts/|./layouts/|g" "$DEST/index.html"
+
+# components.css : ../../design/ → ./design/
+sed -i "s|../../design/|./design/|g" "$DEST/components.css"
+
+# Remplacer les placeholders dans index.html
+sed -i "s/{{TITRE}}/$TITRE/g" "$DEST/index.html"
+sed -i "s/{{SOUS_TITRE}}/Master Big Data $(date +%Y-%m-%d)/g" "$DEST/index.html"
+
+
+# ── Générer les fichiers d'instructions LLM ──────────────────────────────────
 cat > "$DEST/CLAUDE.md" << EOF
 # $TITRE
 
@@ -78,9 +89,9 @@ cat > "$DEST/CLAUDE.md" << EOF
 
 ## Instructions LLM
 
-**Design system :** lire \`$REL_KIT/design/DESIGN_SYSTEM.md\`
-**SVG catalog :** lire \`$REL_KIT/design/svg/CATALOG.md\` avant d'ajouter tout élément graphique
-**Prompt template :** lire \`$REL_KIT/templates/$TYPE/PROMPT.md\`
+**Design system :** lire \`./design/DESIGN_SYSTEM.md\`
+**SVG catalog :** lire \`./design/svg/CATALOG.md\` avant d'ajouter tout élément graphique
+**Prompt template :** lire \`./PROMPT.md\`
 **Exemple de section :** voir \`section-EXAMPLE.html\` dans ce dossier
 
 ## Règle principale
@@ -89,22 +100,30 @@ Ne modifie pas \`index.html\`, les fichiers CSS, ni le learning-kit.
 
 ## Workflow
 1. Lire DESIGN_SYSTEM.md
-2. Lire templates/$TYPE/PROMPT.md
+2. Lire PROMPT.md
 3. Consulter section-EXAMPLE.html
 4. Générer section-[nom].html
 5. Ajouter le bouton nav dans index.html (section nav-links)
 EOF
 
+# Gemini CLI lit GEMINI.md, Copilot lit .github/copilot-instructions.md
+cp "$DEST/CLAUDE.md" "$DEST/GEMINI.md"
+mkdir -p "$DEST/.github"
+cp "$DEST/CLAUDE.md" "$DEST/.github/copilot-instructions.md"
+
 echo ""
 echo "Document créé : $DEST"
 echo ""
-echo "  index.html          — shell du document (à compléter : nav-links)"
-echo "  section-EXAMPLE.html — exemple de section à dupliquer"
-echo "  components.css      — styles des composants (copié du template)"
-echo "  section-utils.js    — utilitaires section (si disponible pour ce type)"
-echo "  CLAUDE.md           — instructions LLM pour ce document"
+echo "  index.html                        — shell du document"
+echo "  section-EXAMPLE.html              — exemple de section à dupliquer"
+echo "  design/                           — tokens.css + base.css + svg/ (copie locale)"
+echo "  layouts/                          — CSS du shell (copie locale)"
+echo "  components.css                    — styles des composants"
+echo "  section-utils.js                  — utilitaires section (si disponible)"
+echo "  CLAUDE.md                         — instructions pour Claude Code"
+echo "  GEMINI.md                         — instructions pour Gemini CLI"
+echo "  .github/copilot-instructions.md   — instructions pour VS Code Copilot"
 echo ""
 echo "Prochaines étapes :"
-echo "  1. Ouvrir $DEST/index.html et ajouter les boutons de navigation"
-echo "  2. Demander au LLM de générer les sections (en lui donnant CLAUDE.md + section-EXAMPLE.html)"
-echo "  3. Nommer chaque section : section-[sujet].html"
+echo "  1. Ouvrir ce dossier avec ton LLM et coller le contenu du cours"
+echo "  2. Le LLM génère les section-*.html et les boutons nav"

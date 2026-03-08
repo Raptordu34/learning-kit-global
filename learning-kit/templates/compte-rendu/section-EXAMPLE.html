@@ -41,6 +41,33 @@
     <!-- MODE DÉTAILLÉ -->
     <div class="detailed-content">
 
+        <!-- ── HIÉRARCHIE DES TITRES ── -->
+        <h3>Hiérarchie des titres</h3>
+        <p>
+            Un <code>h3</code> marque le début d'une <strong>sous-partie</strong> (séparateur
+            automatique + point orange). Un <code>h4</code> introduit un <strong>sous-sujet</strong>
+            à l'intérieur de cette sous-partie. Ne jamais préfixer les titres avec des lettres
+            ou des chiffres (A., B., 1., 2.) — la structure visuelle suffit.
+        </p>
+
+        <h4>Premier sous-sujet</h4>
+        <p>
+            Contenu du premier sous-sujet. Le <code>h4</code> est affiché en
+            <code>var(--text-primary)</code> à 1.3 rem, weight 700, avec une bordure gauche
+            orange — clairement un titre, mais subordonné au <code>h3</code> (1.6 rem).
+        </p>
+
+        <h4>Deuxième sous-sujet</h4>
+        <p>
+            On peut enchaîner plusieurs <code>h4</code> dans une même sous-partie.
+            Chaque <code>h4</code> peut contenir n'importe quel composant en dessous
+            (listes, callouts, tableaux…).
+        </p>
+        <ul>
+            <li>Un point illustrant le deuxième sous-sujet</li>
+            <li>Un autre point avec <code>code inline</code></li>
+        </ul>
+
         <!-- ── TEXTE ── -->
         <h3>Texte et typographie</h3>
         <p>
@@ -174,6 +201,37 @@ CREATE INDEX ON ventes_mensuelles (mois, region);</code></pre>
  Planning Time: 0.4 ms
  Execution Time: 0.1 ms
 <span class="comment"># Index Scan si index présent — O(log n) au lieu de O(n)</span></code>
+        </div>
+
+        <!-- ── COMPARAISON ── -->
+        <h3>Comparaisons — avantages / limites</h3>
+
+        <p>Utiliser <code>.compare-grid</code> avec des <code>.compare-item</code> pour structurer
+        visuellement les comparaisons. Chaque item reçoit une classe <code>good</code>, <code>bad</code>
+        ou <code>neutral</code>, et un attribut <code>data-label</code> pour le badge.</p>
+
+        <div class="compare-grid">
+            <div class="compare-item good" data-label="Idéal pour">
+                <p>Les valeurs très variées (noms, dates, prix) et les recherches de type
+                "plus grand que" (<code>&gt;</code>) ou "entre deux valeurs" (<code>BETWEEN</code>).</p>
+            </div>
+            <div class="compare-item bad" data-label="Limite">
+                <p>Quand on insère beaucoup de données, l'arbre doit se rééquilibrer —
+                ce qui génère un surcoût d'écriture non négligeable.</p>
+            </div>
+        </div>
+
+        <h4>Avec trois items — <code>neutral</code> disponible</h4>
+        <div class="compare-grid">
+            <div class="compare-item good" data-label="Avantage">
+                <p>Lecture ultra-rapide grâce au pré-calcul.</p>
+            </div>
+            <div class="compare-item bad" data-label="Inconvénient">
+                <p>Données potentiellement obsolètes entre deux rafraîchissements.</p>
+            </div>
+            <div class="compare-item neutral" data-label="Cas d'usage">
+                <p>Tableaux de bord analytiques, rapports périodiques.</p>
+            </div>
         </div>
 
         <!-- ── MISE EN PAGE ── -->

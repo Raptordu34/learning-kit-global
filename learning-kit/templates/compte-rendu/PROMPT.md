@@ -50,6 +50,19 @@ Le premier bouton doit avoir la classe `nav-btn active`.
 
 ---
 
+## Hiérarchie des titres
+
+- `<h2>` — titre de la section (un seul par fichier, en haut)
+- `<h3>` — sous-partie (3 à 8 par section) — séparateur visuel automatique, point orange
+- `<h4>` — sous-sujet à l'intérieur d'une sous-partie (facultatif, 1 à 3 par h3)
+
+**Règles :**
+- Ne jamais préfixer les titres avec A., B., 1., 2. — la hiérarchie visuelle suffit
+- Ne pas sauter de niveau (pas de h4 sans h3 parent)
+- Pas de h5 ou au-delà
+
+---
+
 ## Structure de chaque section
 
 ```html
@@ -141,6 +154,14 @@ Utilise `section-EXAMPLE.html` comme référence visuelle complète. Voici la li
 - `<ol>` — numéros terracotta (automatique)
 - `<ul class="steps">` — étapes visuelles numérotées avec animation water-ripple
 
+### Comparaisons
+- `.compare-grid` — grille auto responsive de cards comparatives
+  - `.compare-item.good` + `data-label="Idéal pour"` — card verte
+  - `.compare-item.bad` + `data-label="Limite"` — card rouge
+  - `.compare-item.neutral` + `data-label="Cas d'usage"` — card neutre
+  - Peut contenir `<p>`, `<ul>`, n'importe quel contenu
+  - Remplace les badges `badge-green` / `badge-red` dans les listes pour les vrais comparatifs
+
 ### Mise en page
 - `.two-col` — grille 2 colonnes, accepte n'importe quel composant
 - `.figure-box` — encadré figure/schéma ; contient `<img>` ou SVG inline + `<figcaption>`
@@ -169,6 +190,7 @@ Si le contenu nécessite un schéma d'architecture, un graphe, un arbre ou tout 
 - [ ] `<body class="mode-detailed">` présent
 - [ ] `.compact-content` avec 3-5 bullets de synthèse
 - [ ] `.detailed-content` avec le contenu complet
+- [ ] Titres : h3 pour sous-parties, h4 pour sous-sujets — pas de A./B./1./2.
 - [ ] Pas de nouvelle classe CSS inventée
 - [ ] KaTeX absent si pas de formules
 - [ ] Tableaux dans `.table-glass`

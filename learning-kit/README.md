@@ -10,9 +10,19 @@ git clone <url-du-repo-prive> learning-kit
 
 ## Créer un nouveau document
 
+Depuis le dossier où tu veux créer le document (ex: `C:\Users\bapti\Documents\A3\`) :
+
+**Windows (PowerShell ou Git Bash) :**
 ```bash
-./learning-kit/scripts/new-doc.sh <type> "<Titre>"
+bash /c/Users/bapti/Documents/Projects/Business/learning-kit-global/learning-kit/scripts/new-doc.sh <type> "<Titre>"
 ```
+
+**macOS / Linux :**
+```bash
+~/learning-kit/scripts/new-doc.sh <type> "<Titre>"
+```
+
+> Le document est créé dans le dossier courant, pas dans le kit.
 
 **Types disponibles :**
 
@@ -30,13 +40,12 @@ git clone <url-du-repo-prive> learning-kit
 
 ## Workflow avec un LLM
 
-Après `new-doc.sh`, chaque dossier contient un `CLAUDE.md` local qui est **automatiquement lu** par Claude Code. Pour Gemini CLI ou Copilot, donner ce fichier en contexte.
+Après `new-doc.sh`, ouvrir le dossier créé avec Claude Code. Le `CLAUDE.md` local est **automatiquement lu**. Pour Gemini CLI ou Copilot, donner ce fichier en contexte manuellement.
 
-Ensuite :
-1. Lire `design/DESIGN_SYSTEM.md`
-2. Lire `templates/<type>/PROMPT.md`
-3. Utiliser `section-EXAMPLE.html` comme référence
-4. Demander la génération de `section-[nom].html`
+Ensuite, coller directement le contenu brut (notes, slides, PDF) — le LLM sait quoi faire :
+- Il découpe en sections thématiques
+- Il génère les fichiers `section-*.html`
+- Il fournit les boutons nav à coller dans `index.html`
 
 ## Modifier le design global
 

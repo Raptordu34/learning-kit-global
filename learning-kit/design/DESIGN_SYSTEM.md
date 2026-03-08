@@ -10,33 +10,39 @@
 ## Variables CSS disponibles (tokens.css)
 
 ```css
---bg-color        /* Fond principal : #0f172a */
---glass-bg        /* Fond des panneaux verre */
---glass-border    /* Bordure des panneaux verre */
---accent          /* Orange principal : #f97316 */
---accent-dark     /* Orange foncé : #ea580c */
---accent-glow     /* Halo orange */
---text-primary    /* Blanc cassé : #f8fafc */
---text-secondary  /* Gris clair : #94a3b8 */
---text-muted      /* Gris : #cbd5e1 */
---text-body       /* Corps de texte : #e2e8f0 */
+--bg-color        /* Fond principal : #262624 */
+--glass-bg        /* Fond des panneaux verre : rgba(48,48,46,0.55) */
+--glass-border    /* Bordure des panneaux verre : rgba(255,255,255,0.12) */
+--accent          /* Terracotta : #d67556 */
+--accent-dark     /* Terracotta foncé : #c4643f */
+--accent-glow     /* Halo terracotta : rgba(214,117,86,0.4) */
+--text-primary    /* Blanc cassé : #f5f3f0 */
+--text-secondary  /* Gris moyen : #9e9a94 */
+--text-muted      /* Gris clair : #c4c0ba */
+--text-body       /* Corps de texte : #dedad5 */
 --radius-sm / --radius-md / --radius-lg  /* 8px / 14px / 24px */
 --spacing-xs / --spacing-sm / --spacing-md / --spacing-lg
 ```
 
 ## Composants universels (base.css)
 
-### Titres
+### Titres — hiérarchie
+
 ```html
 <h2>Titre principal de section</h2>
-<!-- → grand titre blanc, soulignement orange 60% de largeur -->
+<!-- → 2.6rem, weight 800, blanc, barre orange pleine largeur 60% en dessous -->
 
 <h3>Sous-partie</h3>
-<!-- → puce orange animée (water-ripple) à gauche -->
+<!-- → 1.6rem, weight 700, blanc ; séparateur horizontal fin au-dessus + point orange animé (water-ripple) -->
 
-<h4>Titre tertiaire</h4>
-<!-- → gris clair, 1.1rem -->
+<h4>Sous-sujet dans une sous-partie</h4>
+<!-- → 1.3rem, weight 700, blanc, bordure gauche orange (3px) -->
 ```
+
+**Règles impératives :**
+- Ne jamais préfixer les titres avec A., B., 1., 2. — la hiérarchie visuelle suffit
+- Ne pas sauter de niveau (h4 toujours enfant d'un h3)
+- Pas de h5 ou au-delà
 
 ### Texte et inline
 ```html
@@ -44,6 +50,23 @@
 <strong>Texte important (blanc)</strong>
 <em>Accent orange en italique</em>
 <code>SELECT * FROM table</code>  <!-- fond orange transparent, texte ambre -->
+```
+
+### Comparaisons (components.css — compte-rendu)
+```html
+<div class="compare-grid">
+    <div class="compare-item good" data-label="Idéal pour">
+        <p>Contenu...</p>
+    </div>
+    <div class="compare-item bad" data-label="Limite">
+        <p>Contenu...</p>
+    </div>
+    <div class="compare-item neutral" data-label="Cas d'usage">
+        <p>Contenu...</p>
+    </div>
+</div>
+<!-- → grille responsive, header badge coloré automatique via data-label -->
+<!-- → good = vert, bad = rouge, neutral = gris -->
 ```
 
 ### Tableaux
