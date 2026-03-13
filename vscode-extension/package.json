@@ -1,0 +1,45 @@
+{
+  "name": "learning-kit-manager",
+  "displayName": "Learning Kit Manager",
+  "description": "Crée et gère des documents basés sur le Learning Kit design system",
+  "version": "0.1.0",
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "activationEvents": [
+    "onCommand:learningKit.createDocument"
+  ],
+  "main": "./out/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "learningKit.createDocument",
+        "title": "Learning Kit: Créer un nouveau document"
+      }
+    ],
+    "configuration": {
+      "title": "Learning Kit Manager",
+      "properties": {
+        "learningKit.sourcePath": {
+          "type": "string",
+          "default": "",
+          "description": "Chemin absolu vers le dossier racine du Learning Kit (contenant learning-kit/templates/, design/, layouts/)"
+        }
+      }
+    }
+  },
+  "scripts": {
+    "compile": "tsc -p tsconfig.json",
+    "watch": "tsc -watch -p tsconfig.json",
+    "vscode:prepublish": "npm run compile"
+  },
+  "devDependencies": {
+    "@types/node": "^25.5.0",
+    "@types/vscode": "^1.85.0",
+    "@vscode/vsce": "^2.22.0",
+    "typescript": "^5.3.0"
+  }
+}
