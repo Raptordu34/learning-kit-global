@@ -19,7 +19,8 @@ export function activate(context: vscode.ExtensionContext): void {
           'Mettre à jour', 'Plus tard'
         ).then(choice => {
           if (choice === 'Mettre à jour') {
-            const [owner, repo] = repoSlug.split('/');
+            const cleanSlug = repoSlug.replace(/^https?:\/\/(www\.)?github\.com\//, '').replace(/\/$/, '');
+            const [owner, repo] = cleanSlug.split('/');
             vscode.window.withProgress({
               location: vscode.ProgressLocation.Notification,
               title: 'Learning Kit: Mise à jour des templates...',
@@ -53,7 +54,8 @@ export function activate(context: vscode.ExtensionContext): void {
             return;
           }
           // Premier démarrage : télécharger
-          const [owner, repo] = slug.split('/');
+          const cleanSlug = slug.replace(/^https?:\/\/(www\.)?github\.com\//, '').replace(/\/$/, '');
+          const [owner, repo] = cleanSlug.split('/');
           await vscode.window.withProgress({
             location: vscode.ProgressLocation.Notification,
             title: 'Learning Kit: Téléchargement des templates...',

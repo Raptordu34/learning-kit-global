@@ -9,7 +9,7 @@ export async function getLatestSha(owner: string, repo: string): Promise<string>
   return new Promise((resolve, reject) => {
     const options = {
       hostname: 'api.github.com',
-      path: `/repos/${owner}/${repo}/commits/main`,
+      path: `/repos/${owner}/${repo}/commits/HEAD`,
       headers: { 'User-Agent': 'learning-kit-vscode' }
     };
     https.get(options, (res) => {
@@ -30,8 +30,9 @@ function downloadFile(url: string, dest: string): Promise<void> {
   return new Promise((resolve, reject) => {
     const makeRequest = (requestUrl: string): void => {
       https.get(requestUrl, { headers: { 'User-Agent': 'learning-kit-vscode' } }, (res) => {
-        if (res.statusCode === 301 || res.statusCode === 302) {
-          makeRequest(res.headers.location!);
+        if (res.statusCode === 301 || res.statusCode === 302 || res.statusCode === 307 || res.statusCode === 308) {
+          const newUrl = new URL(res.headers.location!, requestUrl).toString();
+          makeRequest(newUrl);
           return;
         }
         if (res.statusCode !== 200) {
@@ -57,7 +58,7 @@ export async function downloadAndExtract(
 
   const zipPath = path.join(context.globalStorageUri.fsPath, '_tmp.zip');
   await downloadFile(
-    `https://codeload.github.com/${owner}/${repo}/zip/refs/heads/main`,
+    `https://codeload.github.com/${owner}/${repo}/zip/HEAD`,
     zipPath
   );
 
@@ -68,9 +69,13 @@ export async function downloadAndExtract(
   const prefix = entries[0]?.entryName.split('/')[0] + '/';
 
   for (const entry of entries) {
-    if (!entry.entryName.startsWith(prefix + 'learning-kit/')) { continue; }
-    const relativePath = entry.entryName.slice(prefix.length);
-    const destPath = path.join(cacheDir, relativePath);
+    if (!entry.entryName.startsWith(prefix)) { continue; }
+    const relativePathInRepo = entry.entryName.slice(prefix.length);
+    if (!relativePathInRepo) { continue; }
+    
+    // Extrait tout le contenu du repo dans le dossier "learning-kit" du cache
+    const destPath = path.join(cacheDir, 'learning-kit', relativePathInRepo);
+    
     if (entry.isDirectory) {
       fs.mkdirSync(destPath, { recursive: true });
     } else {
@@ -89,7 +94,8 @@ export async function checkForUpdates(
   context: vscode.ExtensionContext,
   repoSlug: string
 ): Promise<{ available: boolean; latestSha: string }> {
-  const [owner, repo] = repoSlug.split('/');
+  const cleanSlug = repoSlug.replace(/^https?:\/\/(www\.)?github\.com\//, '').replace(/\/$/, '');
+  const [owner, repo] = cleanSlug.split('/');
   const latestSha = await getLatestSha(owner, repo);
   const metadata = await getMetadata(context);
 

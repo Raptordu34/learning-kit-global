@@ -1,6 +1,7 @@
 {
   "name": "learning-kit-manager",
   "displayName": "Learning Kit Manager",
+  "publisher": "learning-kit",
   "description": "Crée et gère des documents basés sur le Learning Kit design system",
   "version": "0.1.0",
   "engines": {

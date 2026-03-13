@@ -1,5 +1,5 @@
 .vscode/**
-node_modules/**
+.vscodeignore
 src/**
 tsconfig.json
-*.map
+**/*.map
