@@ -4,23 +4,65 @@ import * as scaffolder from './scaffolder';
 import * as pathPatcher from './pathPatcher';
 import * as aiInstructions from './aiInstructions';
 import * as manifest from './manifest';
+import { cacheExists, getCachePath } from './cache';
+import { checkForUpdates, downloadAndExtract } from './updater';
 
 export function activate(context: vscode.ExtensionContext): void {
+  // Check for updates in background (non-blocking)
+  const config = vscode.workspace.getConfiguration('learningKit');
+  const repoSlug = config.get<string>('githubRepo', '');
+  if (repoSlug) {
+    checkForUpdates(context, repoSlug).then(result => {
+      if (result.available) {
+        vscode.window.showInformationMessage(
+          'Learning Kit : nouveaux templates disponibles.',
+          'Mettre à jour', 'Plus tard'
+        ).then(choice => {
+          if (choice === 'Mettre à jour') {
+            const [owner, repo] = repoSlug.split('/');
+            vscode.window.withProgress({
+              location: vscode.ProgressLocation.Notification,
+              title: 'Learning Kit: Mise à jour des templates...',
+              cancellable: false
+            }, () => downloadAndExtract(context, owner, repo));
+          }
+        });
+      }
+    }).catch(() => {}); // Silencieux si pas d'internet
+  }
+
   const disposable = vscode.commands.registerCommand(
     'learningKit.createDocument',
     async () => {
       // 1. Lire la configuration
-      const config = vscode.workspace.getConfiguration('learningKit');
-      const sourcePath = config.get<string>('sourcePath', '');
+      const cfg = vscode.workspace.getConfiguration('learningKit');
+      const sourcePath = cfg.get<string>('sourcePath', '');
+      const slug = cfg.get<string>('githubRepo', '');
 
-      if (!sourcePath) {
-        vscode.window.showErrorMessage(
-          'Learning Kit: Le chemin source n\'est pas configuré. Ouvrez les paramètres (Ctrl+,) et configurez "learningKit.sourcePath".'
-        );
-        return;
+      let kitUri: vscode.Uri;
+
+      if (sourcePath) {
+        kitUri = vscode.Uri.file(path.join(sourcePath, 'learning-kit'));
+      } else {
+        // Fallback vers cache global
+        if (!await cacheExists(context)) {
+          if (!slug) {
+            vscode.window.showErrorMessage(
+              'Learning Kit: Configurez "learningKit.githubRepo" (ex: owner/learning-kit) ou "learningKit.sourcePath".'
+            );
+            return;
+          }
+          // Premier démarrage : télécharger
+          const [owner, repo] = slug.split('/');
+          await vscode.window.withProgress({
+            location: vscode.ProgressLocation.Notification,
+            title: 'Learning Kit: Téléchargement des templates...',
+            cancellable: false
+          }, () => downloadAndExtract(context, owner, repo));
+        }
+        kitUri = getCachePath(context);
       }
 
-      const kitUri = vscode.Uri.file(path.join(sourcePath, 'learning-kit'));
       const templatesUri = vscode.Uri.joinPath(kitUri, 'templates');
 
       // 2. Lire les templates disponibles
@@ -29,7 +71,7 @@ export function activate(context: vscode.ExtensionContext): void {
         templateEntries = await vscode.workspace.fs.readDirectory(templatesUri);
       } catch {
         vscode.window.showErrorMessage(
-          `Learning Kit: Impossible de lire les templates dans "${templatesUri.fsPath}". Vérifiez "learningKit.sourcePath".`
+          `Learning Kit: Impossible de lire les templates dans "${templatesUri.fsPath}". Vérifiez votre configuration.`
         );
         return;
       }

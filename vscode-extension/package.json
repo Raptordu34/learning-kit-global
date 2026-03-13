@@ -10,7 +10,7 @@
     "Other"
   ],
   "activationEvents": [
-    "onCommand:learningKit.createDocument"
+    "onStartupFinished"
   ],
   "main": "./out/extension.js",
   "contributes": {
@@ -23,10 +23,15 @@
     "configuration": {
       "title": "Learning Kit Manager",
       "properties": {
+        "learningKit.githubRepo": {
+          "type": "string",
+          "default": "",
+          "description": "Repo GitHub public au format owner/repo (ex: bapti/learning-kit). L'extension synchronise automatiquement les templates."
+        },
         "learningKit.sourcePath": {
           "type": "string",
           "default": "",
-          "description": "Chemin absolu vers le dossier racine du Learning Kit (contenant learning-kit/templates/, design/, layouts/)"
+          "description": "Chemin local optionnel — override du cache GitHub si défini."
         }
       }
     }
@@ -36,7 +41,11 @@
     "watch": "tsc -watch -p tsconfig.json",
     "vscode:prepublish": "npm run compile"
   },
+  "dependencies": {
+    "adm-zip": "^0.5.16"
+  },
   "devDependencies": {
+    "@types/adm-zip": "^0.5.7",
     "@types/node": "^25.5.0",
     "@types/vscode": "^1.85.0",
     "@vscode/vsce": "^2.22.0",
