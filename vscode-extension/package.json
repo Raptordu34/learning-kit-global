@@ -50,6 +50,10 @@
       {
         "command": "learningKit.adoptDocument",
         "title": "Learning Kit: Adopter un document existant"
+      },
+      {
+        "command": "learningKit.applyWithAI",
+        "title": "Learning Kit: Appliquer les mises à jour avec l'IA"
       }
     ],
     "menus": {
@@ -73,6 +77,12 @@
           "type": "string",
           "default": "",
           "description": "Chemin local optionnel — override du cache GitHub si défini."
+        },
+        "learningKit.aiTool": {
+          "type": "string",
+          "enum": ["claude", "gemini", "ask"],
+          "default": "ask",
+          "description": "Outil IA à utiliser pour appliquer les mises à jour. 'ask' = demander à chaque fois."
         }
       }
     }

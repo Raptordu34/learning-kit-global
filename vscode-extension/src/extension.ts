@@ -9,6 +9,7 @@ import { checkForUpdates, downloadAndExtract } from './updater';
 import { LearningKitSidebarProvider } from './sidebarProvider';
 import { updateDocument } from './updateDocument';
 import { adoptDocument } from './adoptDocument';
+import { applyWithAI } from './applyWithAI';
 
 export function activate(context: vscode.ExtensionContext): void {
   // Check for updates in background (non-blocking)
@@ -59,6 +60,13 @@ export function activate(context: vscode.ExtensionContext): void {
     vscode.commands.registerCommand('learningKit.adoptDocument', async () => {
       await adoptDocument(context);
       sidebarProvider.refresh();
+    })
+  );
+
+  // Apply with AI command
+  context.subscriptions.push(
+    vscode.commands.registerCommand('learningKit.applyWithAI', async () => {
+      await applyWithAI();
     })
   );
 

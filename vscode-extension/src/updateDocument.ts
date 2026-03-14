@@ -2,6 +2,7 @@ import * as vscode from 'vscode';
 import * as path from 'path';
 import * as fs from 'fs';
 import { readVersions, readChangelog } from './cache';
+import { launchAI } from './applyWithAI';
 import { compareSemver } from './semver';
 import { getUpdateEntries } from './changelogParser';
 
@@ -157,7 +158,11 @@ export async function updateDocument(context: vscode.ExtensionContext): Promise<
   // 11. Open UPDATE.md in editor
   const updateUri = vscode.Uri.file(updateMdPath);
   await vscode.window.showTextDocument(updateUri);
-  vscode.window.showInformationMessage(
-    'Instructions générées dans UPDATE.md — demande à ton IA de les appliquer.'
+  const action = await vscode.window.showInformationMessage(
+    'Instructions générées dans UPDATE.md.',
+    'Lancer l\'IA'
   );
+  if (action === 'Lancer l\'IA') {
+    await launchAI(selected.docFolder);
+  }
 }

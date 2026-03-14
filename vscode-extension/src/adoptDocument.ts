@@ -2,6 +2,7 @@ import * as vscode from 'vscode';
 import * as path from 'path';
 import * as fs from 'fs';
 import { readVersions, readChangelog, getCachePath } from './cache';
+import { launchAI } from './applyWithAI';
 import { compareSemver } from './semver';
 import { parseChangelog, getUpdateEntries } from './changelogParser';
 
@@ -167,7 +168,11 @@ export async function adoptDocument(context: vscode.ExtensionContext): Promise<v
   await vscode.window.showTextDocument(vscode.Uri.file(updateMdPath));
 
   // 10. Confirmation message
-  vscode.window.showInformationMessage(
-    'Document adopté. UPDATE.md généré — demande à ton IA de les appliquer.'
+  const action = await vscode.window.showInformationMessage(
+    'Document adopté. UPDATE.md généré.',
+    'Lancer l\'IA'
   );
+  if (action === 'Lancer l\'IA') {
+    await launchAI(docFolder);
+  }
 }
