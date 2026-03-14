@@ -15,12 +15,48 @@
   ],
   "main": "./out/extension.js",
   "contributes": {
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "learningKit",
+          "title": "Learning Kit",
+          "icon": "resources/learning-kit.svg"
+        }
+      ]
+    },
+    "views": {
+      "learningKit": [
+        {
+          "id": "learningKit.sidebar",
+          "name": "Learning Kit",
+          "when": "true"
+        }
+      ]
+    },
     "commands": [
       {
         "command": "learningKit.createDocument",
         "title": "Learning Kit: Créer un nouveau document"
+      },
+      {
+        "command": "learningKit.updateDocument",
+        "title": "Learning Kit: Mettre à jour un document"
+      },
+      {
+        "command": "learningKit.refreshSidebar",
+        "title": "Learning Kit: Actualiser",
+        "icon": "$(refresh)"
       }
     ],
+    "menus": {
+      "view/title": [
+        {
+          "command": "learningKit.refreshSidebar",
+          "when": "view == learningKit.sidebar",
+          "group": "navigation"
+        }
+      ]
+    },
     "configuration": {
       "title": "Learning Kit Manager",
       "properties": {
