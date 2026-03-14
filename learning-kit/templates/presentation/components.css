@@ -1,5 +1,5 @@
 /* learning-kit/templates/presentation/components.css */
-@import url('./design/base.css');
+@import url('../../design/base.css');
 
 /* ── Reset body pour le layout slides ───────────────────────────── */
 /* base.css (importé ci-dessus) applique background:transparent et padding:60px 80px
@@ -12,16 +12,27 @@ body {
 /* ── h2/h3/h4 dans les slides — tailles adaptées ────────────────── */
 .slide-content h2 {
     display: block;
+    position: relative;
     font-size: 2rem;
     margin-bottom: 1.25rem;
-    padding-bottom: 0.6rem;
+    padding-bottom: 0.9rem;
     line-height: 1.12;
     letter-spacing: -0.02em;
     background: linear-gradient(135deg, var(--text-primary) 24%, var(--text-muted) 70%);
     -webkit-background-clip: text;
     background-clip: text;
     -webkit-text-fill-color: transparent;
-    text-shadow: none;
+    filter:
+        drop-shadow(1px 2px 3px rgba(0,0,0,0.55))
+        drop-shadow(0 4px 10px rgba(0,0,0,0.30));
+}
+.slide-content h2::after {
+    content: '';
+    position: absolute;
+    bottom: 0; left: 0;
+    width: 56px; height: 3px;
+    background: var(--accent);
+    border-radius: 2px;
 }
 .slide-content h3 {
     font-size: 1.25rem;
@@ -43,6 +54,9 @@ body {
     text-align: center;
     margin: 0 0 1rem;
     letter-spacing: -0.02em;
+    filter:
+        drop-shadow(1px 3px 4px rgba(0,0,0,0.55))
+        drop-shadow(0 6px 16px rgba(0,0,0,0.30));
 }
 .slide-subtitle {
     font-size: 1.05rem;
