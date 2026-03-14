@@ -6,6 +6,8 @@ import * as aiInstructions from './aiInstructions';
 import * as manifest from './manifest';
 import { cacheExists, getCachePath, readVersions } from './cache';
 import { checkForUpdates, downloadAndExtract } from './updater';
+import { LearningKitSidebarProvider } from './sidebarProvider';
+import { updateDocument } from './updateDocument';
 
 export function activate(context: vscode.ExtensionContext): void {
   // Check for updates in background (non-blocking)
@@ -31,6 +33,25 @@ export function activate(context: vscode.ExtensionContext): void {
       }
     }).catch(() => {}); // Silencieux si pas d'internet
   }
+
+  // Register sidebar provider
+  const sidebarProvider = new LearningKitSidebarProvider(context);
+  vscode.window.registerTreeDataProvider('learningKit.sidebar', sidebarProvider);
+
+  // Refresh sidebar command
+  context.subscriptions.push(
+    vscode.commands.registerCommand('learningKit.refreshSidebar', () => {
+      sidebarProvider.refresh();
+    })
+  );
+
+  // Update document command
+  context.subscriptions.push(
+    vscode.commands.registerCommand('learningKit.updateDocument', async () => {
+      await updateDocument(context);
+      sidebarProvider.refresh();
+    })
+  );
 
   const disposable = vscode.commands.registerCommand(
     'learningKit.createDocument',
