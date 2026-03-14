@@ -8,6 +8,7 @@ import { cacheExists, getCachePath, readVersions } from './cache';
 import { checkForUpdates, downloadAndExtract } from './updater';
 import { LearningKitSidebarProvider } from './sidebarProvider';
 import { updateDocument } from './updateDocument';
+import { adoptDocument } from './adoptDocument';
 
 export function activate(context: vscode.ExtensionContext): void {
   // Check for updates in background (non-blocking)
@@ -49,6 +50,14 @@ export function activate(context: vscode.ExtensionContext): void {
   context.subscriptions.push(
     vscode.commands.registerCommand('learningKit.updateDocument', async () => {
       await updateDocument(context);
+      sidebarProvider.refresh();
+    })
+  );
+
+  // Adopt document command
+  context.subscriptions.push(
+    vscode.commands.registerCommand('learningKit.adoptDocument', async () => {
+      await adoptDocument(context);
       sidebarProvider.refresh();
     })
   );

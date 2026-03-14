@@ -46,6 +46,10 @@
         "command": "learningKit.refreshSidebar",
         "title": "Learning Kit: Actualiser",
         "icon": "$(refresh)"
+      },
+      {
+        "command": "learningKit.adoptDocument",
+        "title": "Learning Kit: Adopter un document existant"
       }
     ],
     "menus": {

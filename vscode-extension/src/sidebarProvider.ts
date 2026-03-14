@@ -56,6 +56,7 @@ export class LearningKitSidebarProvider
     // Action buttons
     items.push(new ActionItem('$(add) Nouveau document', 'learningKit.createDocument'));
     items.push(new ActionItem('$(arrow-up) Mettre à jour', 'learningKit.updateDocument'));
+    items.push(new ActionItem('$(repo-clone) Adopter', 'learningKit.adoptDocument'));
 
     // Separator label
     const sep = new vscode.TreeItem('Templates disponibles');
