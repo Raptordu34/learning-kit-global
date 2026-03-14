@@ -1,9 +1,13 @@
 import * as vscode from 'vscode';
 
-export async function generate(projectUri: vscode.Uri, templateName: string): Promise<void> {
+export async function generate(
+  projectUri: vscode.Uri,
+  templateName: string,
+  version: string
+): Promise<void> {
   const manifest = {
     templateName,
-    version: '1.0.0',
+    templateVersion: version,
     createdAt: new Date().toISOString()
   };
 

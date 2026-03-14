@@ -4,7 +4,7 @@ import * as scaffolder from './scaffolder';
 import * as pathPatcher from './pathPatcher';
 import * as aiInstructions from './aiInstructions';
 import * as manifest from './manifest';
-import { cacheExists, getCachePath } from './cache';
+import { cacheExists, getCachePath, readVersions } from './cache';
 import { checkForUpdates, downloadAndExtract } from './updater';
 
 export function activate(context: vscode.ExtensionContext): void {
@@ -148,7 +148,11 @@ export function activate(context: vscode.ExtensionContext): void {
 
           await pathPatcher.patchPaths(projectUri);
           await aiInstructions.generate(projectUri, templateName);
-          await manifest.generate(projectUri, templateName);
+
+          // Resolve template version from cached versions.json (fall back to 1.0.0)
+          const versions = readVersions(context);
+          const templateVersion = versions?.[templateName] ?? '1.0.0';
+          await manifest.generate(projectUri, templateName, templateVersion);
 
           // Ouvrir index.html
           const indexUri = vscode.Uri.joinPath(projectUri, 'index.html');

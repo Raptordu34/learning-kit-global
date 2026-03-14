@@ -32,3 +32,28 @@ export async function cacheExists(context: vscode.ExtensionContext): Promise<boo
   const templatesPath = path.join(context.globalStorageUri.fsPath, 'learning-kit', 'templates');
   return fs.existsSync(templatesPath);
 }
+
+/** Read templates/versions.json from the local cache. Returns null if not found. */
+export function readVersions(context: vscode.ExtensionContext): Record<string, string> | null {
+  const versionsPath = path.join(
+    getCachePath(context).fsPath,
+    'templates',
+    'versions.json'
+  );
+  try {
+    const raw = fs.readFileSync(versionsPath, 'utf-8');
+    return JSON.parse(raw) as Record<string, string>;
+  } catch {
+    return null;
+  }
+}
+
+/** Read CHANGELOG.md from the local cache. Returns empty string if not found. */
+export function readChangelog(context: vscode.ExtensionContext): string {
+  const changelogPath = path.join(getCachePath(context).fsPath, 'CHANGELOG.md');
+  try {
+    return fs.readFileSync(changelogPath, 'utf-8');
+  } catch {
+    return '';
+  }
+}
