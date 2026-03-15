@@ -163,8 +163,10 @@ export async function adoptDocument(context: vscode.ExtensionContext): Promise<v
     updateContent += `---\nUne fois les modifications appliquées, supprime ce fichier UPDATE.md.\n`;
   }
 
-  // 9. Write UPDATE.md and open in editor
+  // 9. Write UPDATE.md and update manifest to latestVersion
   fs.writeFileSync(updateMdPath, updateContent, 'utf-8');
+  const updatedManifest = { templateName, templateVersion: latestVersion, createdAt: new Date().toISOString() };
+  fs.writeFileSync(manifestPath, JSON.stringify(updatedManifest, null, 2), 'utf-8');
   await vscode.window.showTextDocument(vscode.Uri.file(updateMdPath));
 
   // 10. Confirmation message

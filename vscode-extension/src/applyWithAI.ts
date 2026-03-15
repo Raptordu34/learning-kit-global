@@ -56,57 +56,155 @@ async function findManifests(): Promise<ManifestInfo[]> {
 
 // ─── Commande sidebar ─────────────────────────────────────────────────────────
 
-interface UpdateMdPickItem extends vscode.QuickPickItem {
-  docFolder: string;
-}
-
 export async function applyWithAI(): Promise<void> {
-  // 1. Chercher les .lkit-manifest.json dans le workspace
-  const manifests = await vscode.workspace.findFiles(
-    '**/.lkit-manifest.json',
-    '**/node_modules/**'
+  // 1. Manifests filtrés sur la présence d'un UPDATE.md
+  const manifests = (await findManifests()).filter(m =>
+    fs.existsSync(path.join(m.folderPath, 'UPDATE.md'))
   );
 
-  if (manifests.length === 0) {
-    vscode.window.showInformationMessage(
-      'Aucun document Learning Kit trouvé dans le workspace.'
-    );
-    return;
-  }
-
-  // 2. Garder seulement les dossiers qui ont un UPDATE.md
   const workspaceRoot = vscode.workspace.workspaceFolders?.[0]?.uri;
-  const picks: UpdateMdPickItem[] = [];
-
-  for (const uri of manifests) {
-    const docFolder = path.dirname(uri.fsPath);
-    if (!fs.existsSync(path.join(docFolder, 'UPDATE.md'))) { continue; }
-
+  const items: vscode.QuickPickItem[] = manifests.map(m => {
     const relPath = workspaceRoot
-      ? './' + path.relative(workspaceRoot.fsPath, docFolder).split(path.sep).join('/')
-      : docFolder;
+      ? './' + path.relative(workspaceRoot.fsPath, m.folderPath).split(path.sep).join('/')
+      : m.folderPath;
+    return { label: m.templateName, description: relPath };
+  });
+  items.push({ label: '📁 Choisir un dossier manuellement...', description: '' });
 
-    picks.push({ label: relPath, description: 'UPDATE.md présent', docFolder });
+  const picked = await vscode.window.showQuickPick(items, {
+    placeHolder: manifests.length === 0
+      ? 'Aucun UPDATE.md trouvé — choisir un dossier manuellement'
+      : 'Sélectionner le document à appliquer',
+    title: 'Learning Kit: Appliquer avec l\'IA',
+  });
+  if (!picked) { return; }
+
+  let docFolder: string;
+
+  if (picked.label.startsWith('📁')) {
+    const uri = await vscode.window.showOpenDialog({
+      canSelectFolders: true, canSelectFiles: false, canSelectMany: false,
+      openLabel: 'Sélectionner le dossier du document',
+    });
+    if (!uri?.[0]) { return; }
+    docFolder = uri[0].fsPath;
+    if (!fs.existsSync(path.join(docFolder, 'UPDATE.md'))) {
+      vscode.window.showWarningMessage('Aucun UPDATE.md dans ce dossier.');
+      return;
+    }
+  } else {
+    const match = manifests.find(m => {
+      const relPath = workspaceRoot
+        ? './' + path.relative(workspaceRoot.fsPath, m.folderPath).split(path.sep).join('/')
+        : m.folderPath;
+      return m.templateName === picked.label && relPath === picked.description;
+    });
+    docFolder = match?.folderPath ?? picked.description!;
   }
 
-  if (picks.length === 0) {
-    vscode.window.showInformationMessage(
-      'Aucun UPDATE.md trouvé. Générez-en un via "Mettre à jour" ou "Adopter".'
-    );
-    return;
+  await launchAI(docFolder);
+}
+
+// ─── Relire avec l'IA ─────────────────────────────────────────────────────────
+
+const REVIEW_MODES = [
+  {
+    label: '🎨 Style',
+    description: 'Vérifier le respect des conventions visuelles',
+    prompt: (templateName: string) =>
+      `Lis design/DESIGN_SYSTEM.md et tous les fichiers section-*.html (et slide-*.html) de ce dossier. ` +
+      `Pour chaque fichier de contenu : ` +
+      `1) Vérifie que seules les classes CSS documentées dans DESIGN_SYSTEM.md sont utilisées. ` +
+      `2) Signale tout style inline non documenté. ` +
+      `3) Vérifie que la structure HTML respecte les patterns du template '${templateName}'. ` +
+      `Liste les problèmes par fichier, puis corrige-les directement.`,
+  },
+  {
+    label: '📝 Contenu',
+    description: 'Enrichir : exemples, analogies, explications',
+    prompt: (_templateName: string) =>
+      `Lis CLAUDE.md pour le contexte, puis tous les fichiers section-*.html de ce dossier. ` +
+      `Pour chaque section : ` +
+      `1) Vérifie l'exactitude et la complétude du contenu. ` +
+      `2) Identifie les passages qui manquent d'exemples concrets, d'analogies ou d'explications intermédiaires. ` +
+      `3) Enrichis le contenu directement : ajoute des exemples, analogies pédagogiques, détails explicatifs. ` +
+      `Respecte strictement les classes CSS existantes — ne crée aucun style nouveau.`,
+  },
+  {
+    label: '📐 Schémas',
+    description: 'Créer des diagrammes SVG pertinents',
+    prompt: (_templateName: string) =>
+      `Lis design/svg/CATALOG.md et les fichiers du catalogue dans design/svg/ (arrows.md, nodes.md, arch.md, callouts.md, charts.md, braces.md, lines.md), ` +
+      `puis lis tous les fichiers section-*.html de ce dossier. ` +
+      `Pour chaque concept qui bénéficierait d'un schéma visuel (flux, architecture, comparaison, processus) : ` +
+      `1) Identifie l'endroit précis dans le fichier. ` +
+      `2) Crée un SVG inline en utilisant UNIQUEMENT les composants du catalogue ` +
+      `(couleurs: #d67556 accent, #9e9a94 muted ; stroke-width: 1.5 ; fill: none sur le SVG racine). ` +
+      `3) Intègre le SVG directement dans le fichier HTML à l'endroit pertinent.`,
+  },
+];
+
+export async function reviewDocument(context: vscode.ExtensionContext): Promise<void> {
+  // 1. Sélection du document
+  const manifests = await findManifests();
+  const workspaceRoot = vscode.workspace.workspaceFolders?.[0]?.uri;
+  const items: vscode.QuickPickItem[] = manifests.map(m => {
+    const relPath = workspaceRoot
+      ? './' + path.relative(workspaceRoot.fsPath, m.folderPath).split(path.sep).join('/')
+      : m.folderPath;
+    return { label: m.templateName, description: relPath };
+  });
+  items.push({ label: '📁 Choisir un dossier manuellement...', description: '' });
+
+  const picked = await vscode.window.showQuickPick(items, {
+    placeHolder: 'Sélectionner le document à relire',
+    title: 'Learning Kit: Relire avec l\'IA',
+  });
+  if (!picked) { return; }
+
+  let docFolder: string;
+  let templateName: string;
+
+  if (picked.label.startsWith('📁')) {
+    const uri = await vscode.window.showOpenDialog({
+      canSelectFolders: true, canSelectFiles: false, canSelectMany: false,
+      openLabel: 'Sélectionner le dossier du document',
+    });
+    if (!uri?.[0]) { return; }
+    docFolder = uri[0].fsPath;
+    try {
+      const m = JSON.parse(fs.readFileSync(path.join(docFolder, '.lkit-manifest.json'), 'utf-8'));
+      templateName = m.templateName ?? 'inconnu';
+    } catch { templateName = 'inconnu'; }
+  } else {
+    const match = manifests.find(m => {
+      const relPath = workspaceRoot
+        ? './' + path.relative(workspaceRoot.fsPath, m.folderPath).split(path.sep).join('/')
+        : m.folderPath;
+      return m.templateName === picked.label && relPath === picked.description;
+    });
+    docFolder = match?.folderPath ?? picked.description!;
+    templateName = picked.label;
   }
 
-  // 3. Si un seul résultat, pas de QuickPick
-  const selected = picks.length === 1
-    ? picks[0]
-    : await vscode.window.showQuickPick(picks, {
-        placeHolder: 'Sélectionnez le document à traiter',
-        title: 'Learning Kit: Appliquer avec l\'IA'
-      });
+  // 2. Sélection du mode de relecture
+  const mode = await vscode.window.showQuickPick(REVIEW_MODES, {
+    placeHolder: 'Choisir le mode de relecture',
+    title: 'Learning Kit: Mode de relecture',
+  });
+  if (!mode) { return; }
 
-  if (!selected) { return; }
+  // 3. Lancer le terminal
+  const tool = await resolveAiTool();
+  if (!tool) { return; }
 
-  await launchAI(selected.docFolder);
+  const prompt = mode.prompt(templateName);
+  const terminal = vscode.window.createTerminal({
+    name: `Learning Kit — Relecture ${mode.label}`,
+    cwd: docFolder,
+  });
+  terminal.show();
+  terminal.sendText(`${tool} "${prompt.replace(/"/g, '\\"')}"`);
 }
 
 // ─── Démarrer avec l'IA ───────────────────────────────────────────────────────

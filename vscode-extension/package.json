@@ -59,6 +59,11 @@
         "command": "learningKit.startWithAI",
         "title": "Learning Kit: Démarrer avec l'IA",
         "category": "Learning Kit"
+      },
+      {
+        "command": "learningKit.reviewDocument",
+        "title": "Learning Kit: Relire un document avec l'IA",
+        "category": "Learning Kit"
       }
     ],
     "menus": {

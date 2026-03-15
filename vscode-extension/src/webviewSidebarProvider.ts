@@ -350,6 +350,7 @@ export class WebviewSidebarProvider implements vscode.WebviewViewProvider {
   <button class="btn btn-secondary" onclick="exec('learningKit.adoptDocument')">⊕ Adopter</button>
   <button class="btn btn-secondary" onclick="exec('learningKit.applyWithAI')">▶ Appliquer avec l'IA</button>
   <button class="btn btn-secondary" onclick="exec('learningKit.startWithAI')">★ Démarrer avec l'IA</button>
+  <button class="btn btn-secondary" onclick="exec('learningKit.reviewDocument')">◎ Relire avec l'IA</button>
 </div>
 
 <div class="section">
