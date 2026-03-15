@@ -1,0 +1,89 @@
+<h2>Comment afficher les settings dans la sidebar ?</h2>
+<p class="subtitle">Les 3 settings : GitHub repo, chemin local, outil IA</p>
+
+<div class="cards">
+  <div class="card" data-choice="inline-always" onclick="toggleSelect(this)">
+    <div class="card-image">
+      <div style="background:#1e1e1e;border-radius:6px;padding:12px;font-family:system-ui;font-size:12px;color:#ccc;min-height:180px">
+        <div style="font-size:10px;color:#888;margin-bottom:8px;letter-spacing:0.8px">CONFIGURATION</div>
+        <div style="margin-bottom:8px">
+          <div style="font-size:10px;color:#aaa;margin-bottom:3px">Repo GitHub</div>
+          <div style="display:flex;gap:4px">
+            <div style="flex:1;background:#3c3c3c;border:1px solid #555;border-radius:3px;padding:4px 6px;font-size:10px;color:#569cd6">bapti/learning-kit</div>
+            <div style="background:#0e639c;border-radius:3px;padding:4px 6px;font-size:10px">✓</div>
+          </div>
+        </div>
+        <div style="margin-bottom:8px">
+          <div style="font-size:10px;color:#aaa;margin-bottom:3px">Chemin local <span style="color:#555">(optionnel)</span></div>
+          <div style="background:#3c3c3c;border:1px solid #404040;border-radius:3px;padding:4px 6px;font-size:10px;color:#888">Non configuré</div>
+        </div>
+        <div>
+          <div style="font-size:10px;color:#aaa;margin-bottom:3px">Outil IA</div>
+          <div style="display:flex;gap:4px">
+            <div style="flex:1;background:#3c3c3c;border-radius:3px;padding:4px 6px;font-size:10px">Claude ▾</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>A — Settings toujours visibles</h3>
+      <p>Section fixe en haut ou en bas de la sidebar avec les champs éditables directement. On voit et modifie les valeurs sans quitter la sidebar.</p>
+    </div>
+  </div>
+
+  <div class="card" data-choice="collapsible" onclick="toggleSelect(this)">
+    <div class="card-image">
+      <div style="background:#1e1e1e;border-radius:6px;padding:12px;font-family:system-ui;font-size:12px;color:#ccc;min-height:180px">
+        <div style="display:flex;justify-content:space-between;align-items:center;background:#252526;border-radius:4px;padding:6px 8px;margin-bottom:6px;cursor:pointer">
+          <span style="font-size:10px;color:#aaa;letter-spacing:0.8px">⚙ CONFIGURATION</span>
+          <span style="color:#888;font-size:10px">▾ ouvrir</span>
+        </div>
+        <div style="background:#252526;border-radius:4px;padding:8px;font-size:10px;color:#888;text-align:center;margin-bottom:4px">
+          <div>Repo: <span style="color:#569cd6">bapti/learning-kit</span></div>
+          <div style="margin-top:3px">IA: <span style="color:#aaa">Claude</span></div>
+        </div>
+        <div style="margin-top:8px">
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px;margin-bottom:4px">
+            <div style="background:#0e639c;border-radius:4px;padding:6px;text-align:center;font-size:11px">＋ Nouveau</div>
+            <div style="background:#2d2d2d;border:1px solid #404040;border-radius:4px;padding:6px;text-align:center;font-size:11px">↑ Update</div>
+          </div>
+          <div style="background:#252526;border-radius:4px;padding:8px">
+            <div style="font-size:10px;color:#888;margin-bottom:4px">TEMPLATES (3)</div>
+            <div style="font-size:11px;padding:3px 0;border-bottom:1px solid #333">brief-marketing <span style="float:right;color:#569cd6;font-size:9px">v1.2.0</span></div>
+            <div style="font-size:11px;padding:3px 0">spec-tech <span style="float:right;color:#569cd6;font-size:9px">v2.0.1</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>B — Section collapsible</h3>
+      <p>Un accordéon "⚙ Configuration" réduit par défaut, avec un aperçu des valeurs courantes. On l'ouvre pour modifier. Économise l'espace vertical.</p>
+    </div>
+  </div>
+
+  <div class="card" data-choice="status-bar" onclick="toggleSelect(this)">
+    <div class="card-image">
+      <div style="background:#1e1e1e;border-radius:6px;padding:12px;font-family:system-ui;font-size:12px;color:#ccc;min-height:180px">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px;margin-bottom:8px">
+          <div style="background:#0e639c;border-radius:4px;padding:6px;text-align:center;font-size:11px">＋ Nouveau</div>
+          <div style="background:#2d2d2d;border:1px solid #404040;border-radius:4px;padding:6px;text-align:center;font-size:11px">↑ Update</div>
+          <div style="background:#2d2d2d;border:1px solid #404040;border-radius:4px;padding:6px;text-align:center;font-size:11px">⎘ Adopter</div>
+          <div style="background:#2d2d2d;border:1px solid #404040;border-radius:4px;padding:6px;text-align:center;font-size:11px">▶ IA</div>
+        </div>
+        <div style="background:#252526;border-radius:4px;padding:8px;margin-bottom:6px">
+          <div style="font-size:10px;color:#888;margin-bottom:4px">TEMPLATES (3)</div>
+          <div style="font-size:11px;padding:3px 0;border-bottom:1px solid #333">brief-marketing <span style="float:right;color:#569cd6;font-size:9px">v1.2.0</span></div>
+          <div style="font-size:11px;padding:3px 0">spec-tech <span style="float:right;color:#569cd6;font-size:9px">v2.0.1</span></div>
+        </div>
+        <div style="border-top:1px solid #333;padding-top:6px;display:flex;justify-content:space-between;align-items:center">
+          <span style="font-size:10px;color:#888">bapti/learning-kit · Claude</span>
+          <div style="background:#2d2d2d;border-radius:3px;padding:3px 6px;font-size:10px;cursor:pointer">⚙</div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>C — Barre de statut + bouton ⚙</h3>
+      <p>Les valeurs courantes s'affichent en pied de sidebar (repo + outil IA). Un bouton ⚙ ouvre les VSCode Settings directement sur la section learningKit.</p>
+    </div>
+  </div>
+</div>

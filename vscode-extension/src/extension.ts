@@ -6,7 +6,7 @@ import * as aiInstructions from './aiInstructions';
 import * as manifest from './manifest';
 import { cacheExists, getCachePath, readVersions } from './cache';
 import { checkForUpdates, downloadAndExtract } from './updater';
-import { LearningKitSidebarProvider } from './sidebarProvider';
+import { WebviewSidebarProvider } from './webviewSidebarProvider';
 import { updateDocument } from './updateDocument';
 import { adoptDocument } from './adoptDocument';
 import { applyWithAI } from './applyWithAI';
@@ -37,8 +37,14 @@ export function activate(context: vscode.ExtensionContext): void {
   }
 
   // Register sidebar provider
-  const sidebarProvider = new LearningKitSidebarProvider(context);
-  vscode.window.registerTreeDataProvider('learningKit.sidebar', sidebarProvider);
+  const sidebarProvider = new WebviewSidebarProvider(context);
+  context.subscriptions.push(
+    vscode.window.registerWebviewViewProvider(
+      WebviewSidebarProvider.viewType,
+      sidebarProvider,
+      { webviewOptions: { retainContextWhenHidden: true } }
+    )
+  );
 
   // Refresh sidebar command
   context.subscriptions.push(

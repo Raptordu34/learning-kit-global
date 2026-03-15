@@ -27,9 +27,9 @@
     "views": {
       "learningKit": [
         {
-          "id": "learningKit.sidebar",
+          "id": "learningKitWebview",
           "name": "Learning Kit",
-          "when": "true"
+          "type": "webview"
         }
       ]
     },
@@ -60,7 +60,7 @@
       "view/title": [
         {
           "command": "learningKit.refreshSidebar",
-          "when": "view == learningKit.sidebar",
+          "when": "view == learningKitWebview",
           "group": "navigation"
         }
       ]
