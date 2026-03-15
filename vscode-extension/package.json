@@ -54,6 +54,11 @@
       {
         "command": "learningKit.applyWithAI",
         "title": "Learning Kit: Appliquer les mises à jour avec l'IA"
+      },
+      {
+        "command": "learningKit.startWithAI",
+        "title": "Learning Kit: Démarrer avec l'IA",
+        "category": "Learning Kit"
       }
     ],
     "menus": {

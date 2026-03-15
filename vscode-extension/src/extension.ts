@@ -9,7 +9,7 @@ import { checkForUpdates, downloadAndExtract } from './updater';
 import { WebviewSidebarProvider } from './webviewSidebarProvider';
 import { updateDocument } from './updateDocument';
 import { adoptDocument } from './adoptDocument';
-import { applyWithAI } from './applyWithAI';
+import { applyWithAI, launchAISession } from './applyWithAI';
 
 export function activate(context: vscode.ExtensionContext): void {
   // Check for updates in background (non-blocking)
@@ -74,6 +74,13 @@ export function activate(context: vscode.ExtensionContext): void {
     vscode.commands.registerCommand('learningKit.applyWithAI', async () => {
       await applyWithAI();
     })
+  );
+
+  // Start with AI command
+  context.subscriptions.push(
+    vscode.commands.registerCommand('learningKit.startWithAI', () =>
+      launchAISession(context)
+    )
   );
 
   const disposable = vscode.commands.registerCommand(
