@@ -2,6 +2,7 @@ import * as vscode from 'vscode';
 import * as fs from 'fs';
 import * as path from 'path';
 import { readVersions, getMetadata, getCachePath } from './cache';
+import { inlineStyles, inlineScripts, readCssWithImports } from './htmlBundler';
 
 interface SidebarState {
   templates: Record<string, string>;
@@ -351,6 +352,7 @@ export class WebviewSidebarProvider implements vscode.WebviewViewProvider {
   <button class="btn btn-secondary" onclick="exec('learningKit.applyWithAI')">▶ Appliquer avec l'IA</button>
   <button class="btn btn-secondary" onclick="exec('learningKit.startWithAI')">★ Démarrer avec l'IA</button>
   <button class="btn btn-secondary" onclick="exec('learningKit.reviewDocument')">◎ Relire avec l'IA</button>
+  <button class="btn btn-secondary" onclick="exec('learningKit.shareDocument')">⬡ Partager</button>
 </div>
 
 <div class="section">
@@ -438,41 +440,3 @@ function esc(str: string): string {
     .replace(/"/g, '&quot;');
 }
 
-function readCssWithImports(cssPath: string): string {
-  const cssDir = path.dirname(cssPath);
-  let css = fs.readFileSync(cssPath, 'utf-8');
-  css = css.replace(/@import\s+url\(['"]?([^'")\s]+)['"]?\)[^;]*;/g, (_, href) => {
-    if (href.startsWith('http')) { return ''; }
-    try { return readCssWithImports(path.resolve(cssDir, href)); } catch { return ''; }
-  });
-  return css;
-}
-
-function inlineScripts(html: string, htmlFilePath: string): string {
-  const dir = path.dirname(htmlFilePath);
-  return html.replace(
-    /<script\s+([^>]*)src=["']([^"']+)["'][^>]*><\/script>/gi,
-    (match, _attrs, src) => {
-      if (src.startsWith('http')) { return ''; }
-      try {
-        const content = fs.readFileSync(path.resolve(dir, src), 'utf-8');
-        // defer can appear anywhere in the tag — check full match
-        const isDeferred = /\bdefer\b/i.test(match);
-        return isDeferred
-          ? `<script>document.addEventListener('DOMContentLoaded',function(){${content}});</script>`
-          : `<script>${content}</script>`;
-      } catch { return ''; }
-    }
-  );
-}
-
-function inlineStyles(html: string, htmlFilePath: string): string {
-  const dir = path.dirname(htmlFilePath);
-  return html.replace(
-    /<link\s+[^>]*rel=["']stylesheet["'][^>]*href=["']([^"']+)["'][^>]*\/?>/gi,
-    (_, href) => {
-      if (href.startsWith('http')) { return ''; }
-      try { return `<style>${readCssWithImports(path.resolve(dir, href))}</style>`; } catch { return ''; }
-    }
-  );
-}

@@ -64,6 +64,11 @@
         "command": "learningKit.reviewDocument",
         "title": "Learning Kit: Relire un document avec l'IA",
         "category": "Learning Kit"
+      },
+      {
+        "command": "learningKit.shareDocument",
+        "title": "Learning Kit: Partager un document (export HTML autonome)",
+        "category": "Learning Kit"
       }
     ],
     "menus": {

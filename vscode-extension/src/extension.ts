@@ -10,6 +10,7 @@ import { WebviewSidebarProvider } from './webviewSidebarProvider';
 import { updateDocument } from './updateDocument';
 import { adoptDocument } from './adoptDocument';
 import { applyWithAI, launchAISession, reviewDocument } from './applyWithAI';
+import { shareDocument } from './shareDocument';
 
 export function activate(context: vscode.ExtensionContext): void {
   // Check for updates in background (non-blocking)
@@ -87,6 +88,13 @@ export function activate(context: vscode.ExtensionContext): void {
   context.subscriptions.push(
     vscode.commands.registerCommand('learningKit.reviewDocument', () =>
       reviewDocument(context)
+    )
+  );
+
+  // Share document command
+  context.subscriptions.push(
+    vscode.commands.registerCommand('learningKit.shareDocument', () =>
+      shareDocument(context)
     )
   );
 
