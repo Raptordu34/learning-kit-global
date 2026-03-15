@@ -153,11 +153,13 @@ export async function bundleDocument(docFolder: string): Promise<string> {
   // 3. Inline images
   html = inlineImages(html, indexPath);
 
-  // 4. Bundle sections (always emit patch — inoffensive if unused)
+  // 4. Bundle sections — inject patch before </body> so it runs after the
+  //    template's own function declarations (e.g. function loadSection)
+  //    and can properly override them.
   const sectionMap = buildSectionMap(docFolder, indexPath);
   if (Object.keys(sectionMap).length > 0) {
     const patch = buildPatchScript(sectionMap);
-    html = html.replace('<head>', '<head>\n' + patch);
+    html = html.replace('</body>', patch + '\n</body>');
   }
 
   return html;
