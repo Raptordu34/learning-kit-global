@@ -1,8 +1,11 @@
 import * as vscode from 'vscode';
-import { readVersions, getMetadata } from './cache';
+import * as fs from 'fs';
+import * as path from 'path';
+import { readVersions, getMetadata, getCachePath } from './cache';
 
 interface SidebarState {
   templates: Record<string, string>;
+  templateSrcdocs: Record<string, string>;
   syncTime: string;
   config: {
     githubRepo: string;
@@ -24,7 +27,12 @@ export class WebviewSidebarProvider implements vscode.WebviewViewProvider {
   ): void {
     this._view = webviewView;
 
-    webviewView.webview.options = { enableScripts: true };
+    webviewView.webview.options = {
+      enableScripts: true,
+      localResourceRoots: [
+        vscode.Uri.joinPath(this.context.globalStorageUri, 'learning-kit')
+      ]
+    };
 
     this._update();
 
@@ -68,7 +76,7 @@ export class WebviewSidebarProvider implements vscode.WebviewViewProvider {
   private async _update(): Promise<void> {
     if (!this._view) { return; }
     const state = await this._getState();
-    this._view.webview.html = this._getHtml(state);
+    this._view.webview.html = this._getHtml(state, this._view.webview.cspSource);
   }
 
   private async _getState(): Promise<SidebarState> {
@@ -80,9 +88,42 @@ export class WebviewSidebarProvider implements vscode.WebviewViewProvider {
       const diffH = Math.floor(diffMs / 3_600_000);
       syncTime = diffH >= 1 ? `Il y a ${diffH}h` : 'Récente';
     }
+    const cachePath = getCachePath(this.context);
+    const templateSrcdocs: Record<string, string> = {};
+    for (const name of Object.keys(versions)) {
+      const fileUri = vscode.Uri.joinPath(cachePath, 'templates', name, 'index.html');
+      try {
+        const templateDir = fileUri.fsPath.replace(/[/\\]index\.html$/, '');
+        let html = fs.readFileSync(fileUri.fsPath, 'utf-8');
+        html = inlineStyles(html, fileUri.fsPath);
+
+        // Pre-load section/slide files for all template types
+        const contentFiles = fs.readdirSync(templateDir).filter(f => /^(section|slide)-.*\.html$/.test(f));
+        if (contentFiles.length > 0) {
+          const preloaded: Record<string, string> = {};
+          for (const sf of contentFiles) {
+            const sp = path.join(templateDir, sf);
+            let sh = fs.readFileSync(sp, 'utf-8');
+            sh = inlineStyles(sh, sp);
+            sh = inlineScripts(sh, sp);
+            preloaded[sf] = sh;
+          }
+          // </script> inside JSON would terminate the script tag — escape it
+          const safeJson = JSON.stringify(preloaded).replace(/<\//g, '<\\/');
+          // Patch both fetch() (presentation) and loadSection() (sidebar-iframe)
+          const patch = `<script>(function(){const P=${safeJson};const oF=window.fetch;window.fetch=function(url,opts){const k=String(url).split('/').pop().split('?')[0];if(P[k])return Promise.resolve(new Response(P[k],{status:200}));return oF.call(this,url,opts);};const oL=window.loadSection;window.loadSection=function(url,btn){const c=P[url];if(!c){if(oL)oL(url,btn);return;}const f=document.getElementById('content-frame');f.setAttribute('sandbox','allow-scripts allow-same-origin allow-forms');f.style.opacity=0;try{localStorage.setItem('currentSection',url);}catch(e){}setTimeout(()=>{f.srcdoc=c;f.onload=()=>{f.style.opacity=1;if(typeof applyModeToFrame==='function')applyModeToFrame();if(typeof attachIframeHalo==='function')attachIframeHalo(f);};},300);document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('active'));if(btn)btn.classList.add('active');};})();</script>`;
+          html = html.replace('</body>', patch + '</body>');
+        }
+
+        templateSrcdocs[name] = html;
+      } catch {
+        templateSrcdocs[name] = '<p style="color:red">Template introuvable</p>';
+      }
+    }
     const config = vscode.workspace.getConfiguration('learningKit');
     return {
       templates: versions,
+      templateSrcdocs,
       syncTime,
       config: {
         githubRepo: config.get<string>('githubRepo', ''),
@@ -92,15 +133,24 @@ export class WebviewSidebarProvider implements vscode.WebviewViewProvider {
     };
   }
 
-  private _getHtml(state: SidebarState): string {
+  private _getHtml(state: SidebarState, cspSource: string): string {
     const templateEntries = Object.entries(state.templates);
     const templateRows = templateEntries.length > 0
-      ? templateEntries.map(([name, version]) =>
-        `<div class="template-item">
-          <span class="template-name">${esc(name)}</span>
-          <span class="badge">v${esc(version)}</span>
-        </div>`
-      ).join('')
+      ? templateEntries.map(([name, version]) => {
+          const srcdoc = (state.templateSrcdocs[name] ?? '').replace(/&/g, '&amp;').replace(/"/g, '&quot;');
+          return `<div class="template-item" onclick="togglePreview('${esc(name)}')">
+            <span class="template-name">${esc(name)}</span>
+            <div style="display:flex;align-items:center;gap:6px">
+              <span class="badge">v${esc(version)}</span>
+              <span class="chevron" id="chevron-${esc(name)}">▶</span>
+            </div>
+          </div>
+          <div class="template-preview" id="preview-${esc(name)}">
+            <div class="preview-container">
+              <iframe srcdoc="${srcdoc}" title="${esc(name)} preview"></iframe>
+            </div>
+          </div>`;
+        }).join('')
       : `<div class="empty-msg">Aucun cache — configurez GitHub Repo</div>`;
 
     const aiOptions = ['ask', 'claude', 'gemini'].map(v => {
@@ -112,7 +162,7 @@ export class WebviewSidebarProvider implements vscode.WebviewViewProvider {
 <html lang="fr">
 <head>
 <meta charset="UTF-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline';">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline'; frame-src ${cspSource};">
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body {
@@ -186,8 +236,29 @@ export class WebviewSidebarProvider implements vscode.WebviewViewProvider {
     justify-content: space-between;
     padding: 4px 6px;
     border-radius: 3px;
+    cursor: pointer;
   }
   .template-item:hover { background: var(--vscode-list-hoverBackground); }
+  .template-preview {
+    display: none;
+    margin: 2px 0 8px 0;
+  }
+  .template-preview.open { display: block; }
+  .preview-container {
+    height: 240px;
+    border: 1px solid var(--vscode-panel-border);
+    border-radius: 4px;
+    overflow: hidden;
+    position: relative;
+    background: #0f172a;
+  }
+  .preview-container iframe {
+    border: none;
+    width: 200%;
+    height: 200%;
+    transform: scale(0.5);
+    transform-origin: top left;
+  }
   .badge {
     font-size: calc(var(--vscode-font-size) - 2px);
     background: var(--vscode-badge-background);
@@ -333,6 +404,24 @@ export class WebviewSidebarProvider implements vscode.WebviewViewProvider {
     document.getElementById('configBody').classList.toggle('open');
     document.getElementById('chevron').classList.toggle('open');
   }
+  let openPreview = null;
+  function togglePreview(name) {
+    if (openPreview && openPreview !== name) {
+      document.getElementById('preview-' + openPreview).classList.remove('open');
+      document.getElementById('chevron-' + openPreview).classList.remove('open');
+    }
+    const preview = document.getElementById('preview-' + name);
+    const chevron = document.getElementById('chevron-' + name);
+    if (openPreview === name) {
+      preview.classList.remove('open');
+      chevron.classList.remove('open');
+      openPreview = null;
+    } else {
+      preview.classList.add('open');
+      chevron.classList.add('open');
+      openPreview = name;
+    }
+  }
 </script>
 </body>
 </html>`;
@@ -345,4 +434,43 @@ function esc(str: string): string {
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;');
+}
+
+function readCssWithImports(cssPath: string): string {
+  const cssDir = path.dirname(cssPath);
+  let css = fs.readFileSync(cssPath, 'utf-8');
+  css = css.replace(/@import\s+url\(['"]?([^'")\s]+)['"]?\)[^;]*;/g, (_, href) => {
+    if (href.startsWith('http')) { return ''; }
+    try { return readCssWithImports(path.resolve(cssDir, href)); } catch { return ''; }
+  });
+  return css;
+}
+
+function inlineScripts(html: string, htmlFilePath: string): string {
+  const dir = path.dirname(htmlFilePath);
+  return html.replace(
+    /<script\s+([^>]*)src=["']([^"']+)["'][^>]*><\/script>/gi,
+    (match, _attrs, src) => {
+      if (src.startsWith('http')) { return ''; }
+      try {
+        const content = fs.readFileSync(path.resolve(dir, src), 'utf-8');
+        // defer can appear anywhere in the tag — check full match
+        const isDeferred = /\bdefer\b/i.test(match);
+        return isDeferred
+          ? `<script>document.addEventListener('DOMContentLoaded',function(){${content}});</script>`
+          : `<script>${content}</script>`;
+      } catch { return ''; }
+    }
+  );
+}
+
+function inlineStyles(html: string, htmlFilePath: string): string {
+  const dir = path.dirname(htmlFilePath);
+  return html.replace(
+    /<link\s+[^>]*rel=["']stylesheet["'][^>]*href=["']([^"']+)["'][^>]*\/?>/gi,
+    (_, href) => {
+      if (href.startsWith('http')) { return ''; }
+      try { return `<style>${readCssWithImports(path.resolve(dir, href))}</style>`; } catch { return ''; }
+    }
+  );
 }
