@@ -174,12 +174,11 @@ async function selectWorkingFiles(docFolder: string): Promise<string | undefined
   let sectionFiles: string[] = [];
   try {
     sectionFiles = fs.readdirSync(docFolder)
-      .filter(f => /^(section|slide)-.*\.html$/.test(f) && !f.includes('EXAMPLE'))
+      .filter(f => f.endsWith('.html') && !f.includes('EXAMPLE'))
       .sort();
   } catch { /* dossier inaccessible */ }
   if (sectionFiles.length === 0) {
-    if (fs.existsSync(path.join(docFolder, 'index.html'))) { return 'index.html'; }
-    return 'tous les fichiers section-*.html et slide-*.html';
+    return 'tous les fichiers HTML du dossier';
   }
   const items: vscode.QuickPickItem[] = [
     { label: '📋 Tous les fichiers', description: 'Traiter tout le document', picked: true },
@@ -191,7 +190,9 @@ async function selectWorkingFiles(docFolder: string): Promise<string | undefined
     canPickMany: true,
   });
   if (!selected || selected.length === 0) { return undefined; }
-  if (selected.some(s => s.label.startsWith('📋'))) { return 'tous les fichiers section-*.html et slide-*.html'; }
+  if (selected.some(s => s.label.startsWith('📋'))) {
+    return `les fichiers : ${sectionFiles.join(', ')}`;
+  }
   return `les fichiers : ${selected.map(s => s.label).join(', ')}`;
 }
 

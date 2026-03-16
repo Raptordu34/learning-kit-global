@@ -96,7 +96,7 @@ export class WebviewSidebarProvider implements vscode.WebviewViewProvider {
           let sectionFiles: string[] = [];
           try {
             sectionFiles = fs.readdirSync(docFolder)
-              .filter(f => /^(section|slide)-.*\.html$/.test(f) && !f.includes('EXAMPLE'))
+              .filter(f => f.endsWith('.html') && !f.includes('EXAMPLE'))
               .sort();
           } catch { /* dossier inaccessible */ }
 
@@ -522,7 +522,7 @@ export class WebviewSidebarProvider implements vscode.WebviewViewProvider {
         <div id="review-resources-list"></div>
       </div>
       <div id="review-files-section" style="display:none">
-        <div class="subsection-label">Fichiers</div>
+        <div class="subsection-label">Fichiers de travail</div>
         <div id="review-files-list"></div>
       </div>
       <div class="field">
@@ -838,13 +838,16 @@ export class WebviewSidebarProvider implements vscode.WebviewViewProvider {
   }
 
   function buildFilesScope(containerId) {
-    const checked = getCheckedValues(containerId);
-    const hasTous = checked.some(v => v.startsWith('📋'));
-    if (hasTous || checked.length === 0) {
-      return 'tous les fichiers section-*.html et slide-*.html';
+    const container = document.getElementById(containerId);
+    if (!container) { return 'tous les fichiers HTML du dossier'; }
+    const allChecks = Array.from(container.querySelectorAll('input[type="checkbox"]'));
+    const hasTous = allChecks.some(i => i.checked && i.value.startsWith('📋'));
+    const allActualFiles = allChecks.filter(i => !i.value.startsWith('📋')).map(i => i.value);
+    if (hasTous) {
+      return allActualFiles.length > 0 ? 'les fichiers : ' + allActualFiles.join(', ') : 'tous les fichiers HTML du dossier';
     }
-    const files = checked.filter(v => !v.startsWith('📋'));
-    return files.length > 0 ? 'les fichiers : ' + files.join(', ') : 'tous les fichiers section-*.html et slide-*.html';
+    const files = allChecks.filter(i => i.checked && !i.value.startsWith('📋')).map(i => i.value);
+    return files.length > 0 ? 'les fichiers : ' + files.join(', ') : 'tous les fichiers HTML du dossier';
   }
 
   // ── Prompt update ──────────────────────────────────────────────────────
