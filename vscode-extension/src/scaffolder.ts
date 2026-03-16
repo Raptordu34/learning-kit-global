@@ -29,9 +29,9 @@ export async function scaffold(
   const projectUri = vscode.Uri.joinPath(targetUri, projectName);
   await vscode.workspace.fs.createDirectory(projectUri);
 
-  // Copier le template (sans PROMPT.md)
+  // Copier le template
   const templateUri = vscode.Uri.joinPath(kitUri, 'templates', templateName);
-  await copyDir(templateUri, projectUri, ['PROMPT.md']);
+  await copyDir(templateUri, projectUri);
 
   // Copier design/ et layouts/
   const designSrc = vscode.Uri.joinPath(kitUri, 'design');
