@@ -6,6 +6,7 @@ import { launchAI } from './applyWithAI';
 import { compareSemver } from './semver';
 import { getUpdateEntries } from './changelogParser';
 import * as aiInstructions from './aiInstructions';
+import * as pathPatcher from './pathPatcher';
 import { hashFile, computeInfraHashes } from './fileHasher';
 
 interface LkitManifest {
@@ -149,8 +150,11 @@ async function updateInfraFiles(
     }
   }
 
-  // Recompute all infra hashes after replacements
+  // Patch paths in root CSS/HTML files (e.g. ../../design/ → ./design/)
   const projectUri = vscode.Uri.file(docFolder);
+  await pathPatcher.patchPaths(projectUri);
+
+  // Recompute all infra hashes after replacements
   return await computeInfraHashes(projectUri);
 }
 

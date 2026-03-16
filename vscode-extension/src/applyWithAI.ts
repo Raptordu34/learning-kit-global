@@ -410,7 +410,8 @@ export const REVIEW_MODES = [
         `2) Identifie les passages qui manquent d'exemples concrets, d'analogies ou d'explications intermédiaires. ` +
         `3) Enrichis le contenu directement : ajoute des exemples, analogies pédagogiques, détails explicatifs — ` +
         `en utilisant les composants de ${exampleFile ?? 'PROMPT.md'} quand ils améliorent la lisibilité (tip-box, callout, algo-block, etc.). ` +
-        `Ne crée aucune classe CSS nouvelle — utilise uniquement celles documentées dans DESIGN_SYSTEM.md.`
+        `Ne crée aucune classe CSS nouvelle — utilise uniquement celles documentées dans DESIGN_SYSTEM.md. ` +
+        `INTERDIT : ne génère aucun SVG inline, ne crée aucun schéma ou diagramme visuel — l'enrichissement se limite au texte et aux composants HTML.`
       );
     },
   },
@@ -425,11 +426,15 @@ export const REVIEW_MODES = [
         `Lis PROMPT.md pour comprendre les conventions du template '${templateName}'. ` +
         `Lis ${ref}. ` +
         `Lis design/DESIGN_SYSTEM.md pour les couleurs et tokens graphiques autorisés. ` +
-        `Pour chaque concept dans ${filesScope} qui bénéficierait d'un schéma visuel (flux, architecture, comparaison, processus) : ` +
-        `1) Identifie l'endroit précis dans le fichier HTML. ` +
-        `2) Crée un SVG inline en utilisant UNIQUEMENT les couleurs de DESIGN_SYSTEM.md ` +
-        `(accent: #d67556, muted: #9e9a94 ; stroke-width: 1.5 ; fill: none sur le SVG racine). ` +
-        `3) Intègre le SVG directement dans le fichier HTML à l'endroit pertinent.`
+        `Lis tous les fichiers .md présents dans design/svg/ : ils décrivent les SVGs disponibles dans ce dossier. ` +
+        `Pour chaque fichier dans ${filesScope} : ` +
+        `1) Repère les SVGs déjà présents — vérifie leur pertinence par rapport au contenu environnant, ` +
+        `leur cohérence visuelle (couleurs conformes à DESIGN_SYSTEM.md, lisibilité, labels corrects) et leur exactitude technique ; ` +
+        `corrige tout problème constaté directement dans le fichier. ` +
+        `2) Identifie les concepts qui bénéficieraient d'un schéma visuel absent (flux, architecture, comparaison, processus). ` +
+        `3) Pour chaque schéma manquant, choisis le SVG le plus adapté parmi ceux décrits dans design/svg/ et intègre-le ` +
+        `via <img src="design/svg/nom-du-fichier.svg"> ou en copiant son contenu SVG directement. ` +
+        `INTERDIT : ne crée aucun SVG nouveau — utilise exclusivement les SVGs existants dans design/svg/.`
       );
     },
   },
