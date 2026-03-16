@@ -59,7 +59,8 @@ async function updateInfraFiles(
     'copilot-instructions.md',
     'UPDATE.md',
     'PLAN.md',
-    'ressources'
+    'ressources',
+    'index.html'
   ]);
 
   // Collect { relPath, srcPath } for all infra files to update

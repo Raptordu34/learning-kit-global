@@ -43,7 +43,8 @@ const ROOT_EXCLUDES = new Set([
   'copilot-instructions.md',
   'UPDATE.md',
   'PLAN.md',
-  'ressources'
+  'ressources',
+  'index.html'
 ]);
 
 /**
