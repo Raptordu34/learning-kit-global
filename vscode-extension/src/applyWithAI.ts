@@ -1,6 +1,7 @@
 import * as vscode from 'vscode';
 import * as path from 'path';
 import * as fs from 'fs';
+import * as os from 'os';
 
 const AI_PROMPT =
   'Lis le fichier UPDATE.md dans ce dossier et applique toutes les modifications ' +
@@ -49,12 +50,22 @@ function countRemainingTasks(planPath: string): number {
 
 // ─── Session helpers ───────────────────────────────────────────────────────────
 
+/** Retourne le fichier EXAMPLE du template (section, slide, ou null si absent). */
+function findExampleFile(docFolder: string): string | null {
+  for (const f of ['section-EXAMPLE.html', 'slide-EXAMPLE.html']) {
+    if (fs.existsSync(path.join(docFolder, f))) { return f; }
+  }
+  return null;
+}
+
 /** Retourne les chemins relatifs de tous les fichiers ressources détectés dans docFolder. */
 function findResourceFiles(docFolder: string): string[] {
   const candidates: string[] = [];
   for (const f of ['PROMPT.md', 'CLAUDE.md']) {
     if (fs.existsSync(path.join(docFolder, f))) { candidates.push(f); }
   }
+  const exampleFile = findExampleFile(docFolder);
+  if (exampleFile) { candidates.push(exampleFile); }
   if (fs.existsSync(path.join(docFolder, 'design', 'DESIGN_SYSTEM.md'))) {
     candidates.push('design/DESIGN_SYSTEM.md');
   }
@@ -72,35 +83,16 @@ function findResourceFiles(docFolder: string): string[] {
   return candidates;
 }
 
-type ResourcesSelection =
-  | { mode: 'free' }
-  | { mode: 'constrained'; files: string[] }
-  | undefined; // annulation (Echap)
+type ReviewResources = { mode: 'free' } | { mode: 'constrained'; files: string[] };
+type ReviewSelection = { resources: ReviewResources; filesScope: string } | undefined;
 
-/**
- * QuickPick multi-select sur les fichiers ressources.
- * - Rien coché ou item "Libre" → mode libre (l'IA explore elle-même).
- * - Fichiers cochés → mode contraint (preamble "Lis les fichiers suivants").
- * - Echap → undefined (annulation).
- */
-async function selectResources(
-  docFolder: string,
-  defaultKeys: string[],
-): Promise<ResourcesSelection> {
+/** QuickPick ressources seules (utilisé par launchAISession). */
+async function selectResources(docFolder: string, defaultKeys: string[]): Promise<ReviewResources | undefined> {
   const all = findResourceFiles(docFolder);
   if (all.length === 0) { return { mode: 'free' }; }
-
-  const freeItem: vscode.QuickPickItem = {
-    label: '🔍 Libre — l\'IA explore par elle-même',
-    description: 'Aucune contrainte de lecture — l\'IA choisit les fichiers pertinents',
-    picked: false,
-  };
   const items: vscode.QuickPickItem[] = [
-    freeItem,
-    ...all.map(f => ({
-      label: f,
-      picked: defaultKeys.some(d => f === d || f.startsWith(d)),
-    })),
+    { label: '🔍 Libre — l\'IA explore par elle-même', description: 'Aucune contrainte de lecture', picked: false },
+    ...all.map(f => ({ label: f, picked: defaultKeys.some(d => f === d || f.startsWith(d)) })),
   ];
   const selected = await vscode.window.showQuickPick(items, {
     title: 'Learning Kit: Fichiers ressources',
@@ -108,29 +100,22 @@ async function selectResources(
     canPickMany: true,
   });
   if (selected === undefined) { return undefined; }
-  if (selected.length === 0 || selected.some(s => s.label.startsWith('🔍'))) {
-    return { mode: 'free' };
-  }
+  if (selected.length === 0 || selected.some(s => s.label.startsWith('🔍'))) { return { mode: 'free' }; }
   return { mode: 'constrained', files: selected.map(s => s.label) };
 }
 
-/**
- * QuickPick multi-select sur les fichiers section-*.html / slide-*.html.
- * Retourne une chaîne décrivant le scope, ou undefined si annulation.
- * Si aucun fichier n'existe, retourne directement le scope générique.
- */
+/** QuickPick fichiers à traiter seuls (utilisé par launchAISession). */
 async function selectWorkingFiles(docFolder: string): Promise<string | undefined> {
   let sectionFiles: string[] = [];
   try {
     sectionFiles = fs.readdirSync(docFolder)
-      .filter(f => /^(section|slide)-.*\.html$/.test(f))
+      .filter(f => /^(section|slide)-.*\.html$/.test(f) && !f.includes('EXAMPLE'))
       .sort();
   } catch { /* dossier inaccessible */ }
-
   if (sectionFiles.length === 0) {
+    if (fs.existsSync(path.join(docFolder, 'index.html'))) { return 'index.html'; }
     return 'tous les fichiers section-*.html et slide-*.html';
   }
-
   const items: vscode.QuickPickItem[] = [
     { label: '📋 Tous les fichiers', description: 'Traiter tout le document', picked: true },
     ...sectionFiles.map(f => ({ label: f, picked: false })),
@@ -141,24 +126,111 @@ async function selectWorkingFiles(docFolder: string): Promise<string | undefined
     canPickMany: true,
   });
   if (!selected || selected.length === 0) { return undefined; }
-  if (selected.some(s => s.label.startsWith('📋'))) {
-    return 'tous les fichiers section-*.html et slide-*.html';
-  }
+  if (selected.some(s => s.label.startsWith('📋'))) { return 'tous les fichiers section-*.html et slide-*.html'; }
   return `les fichiers : ${selected.map(s => s.label).join(', ')}`;
 }
 
 /**
- * InputBox pré-remplie avec basePrompt — l'utilisateur peut tout modifier.
+ * QuickPick unique combinant ressources et fichiers à traiter.
+ * Deux sections séparées visuellement par des séparateurs VSCode.
  * Retourne undefined si annulation (Echap).
  */
-async function editPrompt(basePrompt: string): Promise<string | undefined> {
-  return vscode.window.showInputBox({
-    title: 'Learning Kit: Prompt final',
-    prompt: 'Modifiez ou complétez le prompt avant le lancement',
-    value: basePrompt,
-    valueSelection: [basePrompt.length, basePrompt.length],
-    ignoreFocusOut: true,
+async function selectResourcesAndFiles(
+  docFolder: string,
+  defaultResourceKeys: string[],
+): Promise<ReviewSelection> {
+  const allResources = findResourceFiles(docFolder);
+
+  // Calcul des fichiers section/slide
+  let sectionFiles: string[] = [];
+  try {
+    sectionFiles = fs.readdirSync(docFolder)
+      .filter(f => /^(section|slide)-.*\.html$/.test(f) && !f.includes('EXAMPLE'))
+      .sort();
+  } catch { /* dossier inaccessible */ }
+
+  // One-pager : pas de section files → scope automatique, pas de section "Fichiers"
+  const autoFilesScope = sectionFiles.length === 0
+    ? (fs.existsSync(path.join(docFolder, 'index.html')) ? 'index.html' : 'tous les fichiers section-*.html et slide-*.html')
+    : null;
+
+  const items: vscode.QuickPickItem[] = [];
+
+  // ── Section Ressources ──
+  items.push({ label: 'Ressources', kind: vscode.QuickPickItemKind.Separator });
+  if (allResources.length > 0) {
+    items.push({
+      label: '🔍 Libre — l\'IA explore par elle-même',
+      description: 'Aucune contrainte de lecture',
+      picked: false,
+    });
+    for (const f of allResources) {
+      items.push({ label: f, picked: defaultResourceKeys.some(d => f === d || f.startsWith(d)) });
+    }
+  }
+
+  // ── Section Fichiers à traiter ──
+  if (sectionFiles.length > 0) {
+    items.push({ label: 'Fichiers à traiter', kind: vscode.QuickPickItemKind.Separator });
+    items.push({ label: '📋 Tous les fichiers', description: 'Traiter tout le document', picked: true });
+    for (const f of sectionFiles) {
+      items.push({ label: f, picked: false });
+    }
+  }
+
+  const selected = await vscode.window.showQuickPick(items, {
+    title: 'Learning Kit: Ressources & fichiers',
+    placeHolder: 'Ajuster les fichiers de contexte et le périmètre à traiter',
+    canPickMany: true,
   });
+  if (selected === undefined) { return undefined; }
+
+  // Résolution des ressources
+  const resourceSet = new Set(allResources);
+  const selectedResources = selected.filter(s => resourceSet.has(s.label)).map(s => s.label);
+  const hasFree = selected.some(s => s.label.startsWith('🔍'));
+  const resources: ReviewResources = (hasFree || selectedResources.length === 0)
+    ? { mode: 'free' }
+    : { mode: 'constrained', files: selectedResources };
+
+  // Résolution du scope fichiers
+  let filesScope: string;
+  if (autoFilesScope !== null) {
+    filesScope = autoFilesScope;
+  } else {
+    const hasAll = selected.some(s => s.label.startsWith('📋'));
+    if (hasAll) {
+      filesScope = 'tous les fichiers section-*.html et slide-*.html';
+    } else {
+      const sectionSet = new Set(sectionFiles);
+      const selectedFiles = selected.filter(s => sectionSet.has(s.label)).map(s => s.label);
+      filesScope = selectedFiles.length > 0
+        ? `les fichiers : ${selectedFiles.join(', ')}`
+        : 'tous les fichiers section-*.html et slide-*.html';
+    }
+  }
+
+  return { resources, filesScope };
+}
+
+/**
+ * Ouvre le prompt dans un fichier temporaire dans l'éditeur VSCode.
+ * Affiche une notification "Lancer ▶ / Annuler" non-modale pendant l'édition.
+ * Retourne le contenu final du fichier, ou undefined si annulation.
+ */
+async function editPromptInEditor(basePrompt: string): Promise<string | undefined> {
+  const tmpFile = path.join(os.tmpdir(), 'lkit-review-prompt.txt');
+  fs.writeFileSync(tmpFile, basePrompt, 'utf-8');
+  const doc = await vscode.workspace.openTextDocument(vscode.Uri.file(tmpFile));
+  await vscode.window.showTextDocument(doc, { preview: false });
+
+  const choice = await vscode.window.showInformationMessage(
+    '✏️  Modifiez le prompt ci-dessus, puis cliquez sur Lancer.',
+    'Lancer ▶',
+    'Annuler',
+  );
+  if (choice !== 'Lancer ▶') { return undefined; }
+  return fs.readFileSync(tmpFile, 'utf-8').trim();
 }
 
 // ─── Helpers manifest ─────────────────────────────────────────────────────────
@@ -240,35 +312,60 @@ const REVIEW_MODES = [
   {
     label: '🎨 Style',
     description: 'Vérifier le respect des conventions visuelles',
-    defaultResources: ['design/DESIGN_SYSTEM.md'],
-    task: (templateName: string, filesScope: string) =>
-      `Pour chaque fichier dans ${filesScope} : ` +
-      `1) Vérifie que seules les classes CSS documentées dans DESIGN_SYSTEM.md sont utilisées. ` +
-      `2) Signale tout style inline non documenté. ` +
-      `3) Vérifie que la structure HTML respecte les patterns du template '${templateName}'. ` +
-      `Liste les problèmes par fichier, puis corrige-les directement.`,
+    task: (templateName: string, filesScope: string, exampleFile: string | null) => {
+      const ref = exampleFile
+        ? `${exampleFile} (référence visuelle de tous les composants du template)`
+        : `PROMPT.md (structure du template)`;
+      return (
+        `Lis PROMPT.md pour comprendre les conventions et la structure du template '${templateName}'. ` +
+        `Lis ${ref} pour identifier les patterns HTML attendus. ` +
+        `Lis design/DESIGN_SYSTEM.md pour connaître toutes les classes CSS autorisées. ` +
+        `Pour chaque fichier dans ${filesScope} : ` +
+        `1) Vérifie que seules les classes CSS documentées dans DESIGN_SYSTEM.md sont utilisées — signale tout style inline ou classe inconnue. ` +
+        `2) Vérifie que la structure HTML et les composants utilisés correspondent aux patterns de ${exampleFile ?? 'PROMPT.md'}. ` +
+        `3) Corrige directement tout écart constaté. ` +
+        `Liste les problèmes trouvés avant chaque correction.`
+      );
+    },
   },
   {
     label: '📝 Contenu',
     description: 'Enrichir : exemples, analogies, explications',
-    defaultResources: ['CLAUDE.md'],
-    task: (_templateName: string, filesScope: string) =>
-      `Pour chaque section dans ${filesScope} : ` +
-      `1) Vérifie l'exactitude et la complétude du contenu. ` +
-      `2) Identifie les passages qui manquent d'exemples concrets, d'analogies ou d'explications intermédiaires. ` +
-      `3) Enrichis le contenu directement : ajoute des exemples, analogies pédagogiques, détails explicatifs. ` +
-      `Respecte strictement les classes CSS existantes — ne crée aucun style nouveau.`,
+    task: (templateName: string, filesScope: string, exampleFile: string | null) => {
+      const ref = exampleFile
+        ? `${exampleFile} (catalogue de tous les composants disponibles pour enrichir la présentation)`
+        : `PROMPT.md (structure et objectifs du template)`;
+      return (
+        `Lis PROMPT.md pour comprendre la structure et les objectifs pédagogiques du template '${templateName}'. ` +
+        `Lis ${ref} pour savoir quels composants utiliser lors de l'enrichissement. ` +
+        `Lis design/DESIGN_SYSTEM.md pour respecter les classes CSS existantes. ` +
+        `Pour chaque section dans ${filesScope} : ` +
+        `1) Vérifie l'exactitude et la complétude du contenu. ` +
+        `2) Identifie les passages qui manquent d'exemples concrets, d'analogies ou d'explications intermédiaires. ` +
+        `3) Enrichis le contenu directement : ajoute des exemples, analogies pédagogiques, détails explicatifs — ` +
+        `en utilisant les composants de ${exampleFile ?? 'PROMPT.md'} quand ils améliorent la lisibilité (tip-box, callout, algo-block, etc.). ` +
+        `Ne crée aucune classe CSS nouvelle — utilise uniquement celles documentées dans DESIGN_SYSTEM.md.`
+      );
+    },
   },
   {
     label: '📐 Schémas',
     description: 'Créer des diagrammes SVG pertinents',
-    defaultResources: ['design/svg/'],
-    task: (_templateName: string, filesScope: string) =>
-      `Pour chaque concept dans ${filesScope} qui bénéficierait d'un schéma visuel (flux, architecture, comparaison, processus) : ` +
-      `1) Identifie l'endroit précis dans le fichier. ` +
-      `2) Crée un SVG inline en utilisant UNIQUEMENT les composants du catalogue ` +
-      `(couleurs: #d67556 accent, #9e9a94 muted ; stroke-width: 1.5 ; fill: none sur le SVG racine). ` +
-      `3) Intègre le SVG directement dans le fichier HTML à l'endroit pertinent.`,
+    task: (templateName: string, filesScope: string, exampleFile: string | null) => {
+      const ref = exampleFile
+        ? `${exampleFile} pour comprendre le contexte visuel du template`
+        : `PROMPT.md pour comprendre les conventions du template`;
+      return (
+        `Lis PROMPT.md pour comprendre les conventions du template '${templateName}'. ` +
+        `Lis ${ref}. ` +
+        `Lis design/DESIGN_SYSTEM.md pour les couleurs et tokens graphiques autorisés. ` +
+        `Pour chaque concept dans ${filesScope} qui bénéficierait d'un schéma visuel (flux, architecture, comparaison, processus) : ` +
+        `1) Identifie l'endroit précis dans le fichier HTML. ` +
+        `2) Crée un SVG inline en utilisant UNIQUEMENT les couleurs de DESIGN_SYSTEM.md ` +
+        `(accent: #d67556, muted: #9e9a94 ; stroke-width: 1.5 ; fill: none sur le SVG racine). ` +
+        `3) Intègre le SVG directement dans le fichier HTML à l'endroit pertinent.`
+      );
+    },
   },
 ];
 
@@ -280,7 +377,11 @@ export async function reviewDocument(context: vscode.ExtensionContext): Promise<
     const relPath = workspaceRoot
       ? './' + path.relative(workspaceRoot.fsPath, m.folderPath).split(path.sep).join('/')
       : m.folderPath;
-    return { label: m.templateName, description: relPath };
+    return {
+      label: path.basename(m.folderPath),
+      description: relPath,
+      detail: m.templateName,
+    };
   });
   items.push({ label: '📁 Choisir un dossier manuellement...', description: '' });
 
@@ -309,10 +410,10 @@ export async function reviewDocument(context: vscode.ExtensionContext): Promise<
       const relPath = workspaceRoot
         ? './' + path.relative(workspaceRoot.fsPath, m.folderPath).split(path.sep).join('/')
         : m.folderPath;
-      return m.templateName === picked.label && relPath === picked.description;
+      return relPath === picked.description;
     });
     docFolder = match?.folderPath ?? picked.description!;
-    templateName = picked.label;
+    templateName = match?.templateName ?? picked.detail ?? 'inconnu';
   }
 
   // 2. Sélection du mode de relecture
@@ -322,20 +423,23 @@ export async function reviewDocument(context: vscode.ExtensionContext): Promise<
   });
   if (!mode) { return; }
 
-  // 3. Sélection des ressources
-  const resources = await selectResources(docFolder, mode.defaultResources);
-  if (resources === undefined) { return; }
+  // 3 & 4. Sélection combinée des ressources et des fichiers à traiter
+  const exampleFile = findExampleFile(docFolder);
+  const defaultResources = [
+    'PROMPT.md',
+    ...(exampleFile ? [exampleFile] : []),
+    'design/DESIGN_SYSTEM.md',
+  ];
+  const selection = await selectResourcesAndFiles(docFolder, defaultResources);
+  if (selection === undefined) { return; }
+  const { resources, filesScope } = selection;
 
-  // 4. Sélection des fichiers à traiter
-  const filesScope = await selectWorkingFiles(docFolder);
-  if (filesScope === undefined) { return; }
-
-  // 5. Construire et éditer le prompt
+  // 5. Construire et éditer le prompt dans l'éditeur
   const resourcesPreamble = resources.mode === 'constrained'
     ? `Lis les fichiers suivants : ${resources.files.join(', ')}. `
     : '';
-  const basePrompt = resourcesPreamble + mode.task(templateName, filesScope);
-  const prompt = await editPrompt(basePrompt);
+  const basePrompt = resourcesPreamble + mode.task(templateName, filesScope, exampleFile);
+  const prompt = await editPromptInEditor(basePrompt);
   if (prompt === undefined) { return; }
 
   // 6. Lancer le terminal
@@ -439,7 +543,7 @@ export async function launchAISession(context: vscode.ExtensionContext): Promise
       `Respecte strictement les patterns de PROMPT.md. ` +
       `Après avoir créé le fichier, coche la tâche dans PLAN.md : remplace \`- [ ] ${next.file}\` par \`- [x] ${next.file}\`. ` +
       `Arrête-toi après cette unique tâche. Ne crée pas d'autres fichiers.`;
-    const prompt = await editPrompt(basePrompt);
+    const prompt = await editPromptInEditor(basePrompt);
     if (prompt === undefined) { return; }
 
     const tool = await resolveAiTool();
@@ -489,7 +593,7 @@ export async function launchAISession(context: vscode.ExtensionContext): Promise
         `Travaille sur ${filesScope}. Pose-moi des questions si besoin.`;
     }
 
-    const prompt = await editPrompt(basePrompt);
+    const prompt = await editPromptInEditor(basePrompt);
     if (prompt === undefined) { return; }
 
     const tool = await resolveAiTool();
