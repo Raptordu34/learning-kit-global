@@ -7,7 +7,7 @@ const AI_PROMPT =
   'Lis le fichier UPDATE.md dans ce dossier et applique toutes les modifications ' +
   'décrites sur les fichiers du projet. Supprime UPDATE.md une fois terminé.';
 
-async function resolveAiTool(): Promise<string | undefined> {
+export async function resolveAiTool(): Promise<string | undefined> {
   const config = vscode.workspace.getConfiguration('learningKit');
   const setting = config.get<string>('aiTool', 'ask');
 
@@ -35,7 +35,7 @@ export async function launchAI(docFolder: string): Promise<void> {
 
 // ─── Plan helpers ─────────────────────────────────────────────────────────────
 
-function findNextPlanTask(planPath: string): { file: string; description: string } | null {
+export function findNextPlanTask(planPath: string): { file: string; description: string } | null {
   const lines = fs.readFileSync(planPath, 'utf-8').split('\n');
   for (const line of lines) {
     const m = line.match(/^- \[ \] ([^\s]+\.html)\s*[—\-]\s*(.+)$/);
@@ -44,14 +44,14 @@ function findNextPlanTask(planPath: string): { file: string; description: string
   return null;
 }
 
-function countRemainingTasks(planPath: string): number {
+export function countRemainingTasks(planPath: string): number {
   return (fs.readFileSync(planPath, 'utf-8').match(/^- \[ \]/gm) ?? []).length;
 }
 
 // ─── Session helpers ───────────────────────────────────────────────────────────
 
 /** Retourne le fichier EXAMPLE du template (section, slide, ou null si absent). */
-function findExampleFile(docFolder: string): string | null {
+export function findExampleFile(docFolder: string): string | null {
   for (const f of ['section-EXAMPLE.html', 'slide-EXAMPLE.html']) {
     if (fs.existsSync(path.join(docFolder, f))) { return f; }
   }
@@ -59,7 +59,7 @@ function findExampleFile(docFolder: string): string | null {
 }
 
 /** Retourne les chemins relatifs de tous les fichiers ressources détectés dans docFolder. */
-function findResourceFiles(docFolder: string): string[] {
+export function findResourceFiles(docFolder: string): string[] {
   const candidates: string[] = [];
   for (const f of ['PROMPT.md', 'CLAUDE.md']) {
     if (fs.existsSync(path.join(docFolder, f))) { candidates.push(f); }
@@ -81,6 +81,71 @@ function findResourceFiles(docFolder: string): string[] {
       .forEach(f => candidates.push(`ressources/${f}`));
   } catch { /* pas de dossier ressources */ }
   return candidates;
+}
+
+// ─── Prompt builders (utilisés par la sidebar) ────────────────────────────────
+
+export function buildStartPrompt(params: {
+  templateName: string;
+  docFolder: string;
+  mode: 'progressive' | 'direct' | 'resume' | 'restart';
+  resources: string[];
+  filesScope?: string;
+}): string {
+  const { templateName, docFolder, mode, resources, filesScope } = params;
+  const resourcesPreamble = resources.length > 0
+    ? `Lis les fichiers suivants : ${resources.join(', ')}. `
+    : '';
+
+  if (mode === 'resume') {
+    const planPath = path.join(docFolder, 'PLAN.md');
+    const next = findNextPlanTask(planPath);
+    if (!next) { return 'Toutes les tâches du PLAN.md sont terminées.'; }
+    return (
+      `${resourcesPreamble}Tu travailles sur un template '${templateName}'. ` +
+      `MISSION (cette session uniquement) : créer le fichier \`${next.file}\` — ${next.description}. ` +
+      `Respecte strictement les patterns de PROMPT.md. ` +
+      `Après avoir créé le fichier, coche la tâche dans PLAN.md : remplace \`- [ ] ${next.file}\` par \`- [x] ${next.file}\`. ` +
+      `Arrête-toi après cette unique tâche. Ne crée pas d'autres fichiers.`
+    );
+  }
+
+  if (mode === 'progressive' || mode === 'restart') {
+    return (
+      `${resourcesPreamble}Tu travailles sur un template '${templateName}'. ` +
+      `MISSION (cette session uniquement) : planifier la structure du document. ` +
+      `1) Analyse PROMPT.md pour comprendre les composants disponibles et la structure attendue. ` +
+      `2) Crée UNIQUEMENT le fichier PLAN.md avec la liste de toutes les sections à créer, ` +
+      `une section par ligne au format : \`- [ ] section-xxx.html — [titre] : [description en 1 ligne]\`. ` +
+      `Ordonne les sections dans l'ordre logique du document. ` +
+      `3) N'écris aucun fichier HTML. Arrête-toi après avoir créé PLAN.md.`
+    );
+  }
+
+  // direct
+  const scope = filesScope ?? 'tous les fichiers section-*.html et slide-*.html';
+  return (
+    `${resourcesPreamble}Tu travailles sur un template '${templateName}'. ` +
+    `Travaille sur ${scope}. Pose-moi des questions si besoin.`
+  );
+}
+
+const REVIEW_MODE_MAP: Record<string, number> = { style: 0, content: 1, schema: 2 };
+
+export function buildReviewPrompt(params: {
+  templateName: string;
+  docFolder: string;
+  reviewMode: string;
+  resources: string[];
+  filesScope: string;
+}): string {
+  const { templateName, docFolder, reviewMode, resources, filesScope } = params;
+  const exampleFile = findExampleFile(docFolder);
+  const resourcesPreamble = resources.length > 0
+    ? `Lis les fichiers suivants : ${resources.join(', ')}. `
+    : '';
+  const idx = REVIEW_MODE_MAP[reviewMode] ?? 0;
+  return resourcesPreamble + REVIEW_MODES[idx].task(templateName, filesScope, exampleFile);
 }
 
 type ReviewResources = { mode: 'free' } | { mode: 'constrained'; files: string[] };
@@ -235,12 +300,12 @@ async function editPromptInEditor(basePrompt: string): Promise<string | undefine
 
 // ─── Helpers manifest ─────────────────────────────────────────────────────────
 
-interface ManifestInfo {
+export interface ManifestInfo {
   templateName: string;
   folderPath: string;
 }
 
-async function findManifests(): Promise<ManifestInfo[]> {
+export async function findManifests(): Promise<ManifestInfo[]> {
   const uris = await vscode.workspace.findFiles('**/.lkit-manifest.json', '**/node_modules/**');
   const results: ManifestInfo[] = [];
   for (const uri of uris) {
@@ -308,7 +373,7 @@ export async function applyWithAI(): Promise<void> {
 
 // ─── Relire avec l'IA ─────────────────────────────────────────────────────────
 
-const REVIEW_MODES = [
+export const REVIEW_MODES = [
   {
     label: '🎨 Style',
     description: 'Vérifier le respect des conventions visuelles',

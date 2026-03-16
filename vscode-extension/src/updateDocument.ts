@@ -1,16 +1,19 @@
 import * as vscode from 'vscode';
 import * as path from 'path';
 import * as fs from 'fs';
-import { readVersions, readChangelog } from './cache';
+import { readVersions, readChangelog, getCachePath, cacheExists } from './cache';
 import { launchAI } from './applyWithAI';
 import { compareSemver } from './semver';
 import { getUpdateEntries } from './changelogParser';
+import * as aiInstructions from './aiInstructions';
+import { hashFile, computeInfraHashes } from './fileHasher';
 
 interface LkitManifest {
   templateName: string;
   templateVersion?: string;
   version?: string; // legacy key — treated as templateVersion
   createdAt: string;
+  fileHashes?: Record<string, string>;
 }
 
 interface ManifestPickItem extends vscode.QuickPickItem {
@@ -18,6 +21,136 @@ interface ManifestPickItem extends vscode.QuickPickItem {
   manifest: LkitManifest;
   resolvedVersion: string;
   docFolder: string;
+}
+
+/** Resolve kitUri the same way createDocument does */
+async function resolveKitUri(context: vscode.ExtensionContext): Promise<vscode.Uri | null> {
+  const cfg = vscode.workspace.getConfiguration('learningKit');
+  const sourcePath = cfg.get<string>('sourcePath', '');
+  if (sourcePath) {
+    return vscode.Uri.file(path.join(sourcePath, 'learning-kit'));
+  }
+  if (await cacheExists(context)) {
+    return getCachePath(context);
+  }
+  return null;
+}
+
+/**
+ * Update infra files from the kit source, using stored hashes to detect
+ * user modifications. Shows a dialog per file when user has modified it.
+ * Returns the updated fileHashes record.
+ */
+async function updateInfraFiles(
+  kitUri: vscode.Uri,
+  templateName: string,
+  docFolder: string,
+  storedHashes: Record<string, string>
+): Promise<Record<string, string>> {
+  const templateSrcUri = vscode.Uri.joinPath(kitUri, 'templates', templateName);
+  const designSrcUri = vscode.Uri.joinPath(kitUri, 'design');
+  const layoutsSrcUri = vscode.Uri.joinPath(kitUri, 'layouts');
+
+  // Files excluded from infra update at root level
+  const ROOT_EXCLUDES = new Set([
+    '.lkit-manifest.json',
+    'CLAUDE.md',
+    'GEMINI.md',
+    'copilot-instructions.md',
+    'UPDATE.md',
+    'PLAN.md',
+    'ressources'
+  ]);
+
+  // Collect { relPath, srcPath } for all infra files to update
+  const infraFiles: Array<{ relPath: string; srcPath: string }> = [];
+
+  // Root template files
+  try {
+    const entries = await vscode.workspace.fs.readDirectory(templateSrcUri);
+    for (const [name, type] of entries) {
+      if (type !== vscode.FileType.File) { continue; }
+      if (ROOT_EXCLUDES.has(name)) { continue; }
+      if (/^section-.+\.html$/.test(name)) { continue; }
+      infraFiles.push({
+        relPath: name,
+        srcPath: vscode.Uri.joinPath(templateSrcUri, name).fsPath
+      });
+    }
+  } catch {
+    // Template folder not readable
+  }
+
+  // design/ files
+  async function collectDir(srcDirUri: vscode.Uri, relPrefix: string): Promise<void> {
+    let entries: [string, vscode.FileType][];
+    try {
+      entries = await vscode.workspace.fs.readDirectory(srcDirUri);
+    } catch {
+      return;
+    }
+    for (const [name, type] of entries) {
+      const childUri = vscode.Uri.joinPath(srcDirUri, name);
+      const relPath = relPrefix + '/' + name;
+      if (type === vscode.FileType.Directory) {
+        await collectDir(childUri, relPath);
+      } else if (type === vscode.FileType.File) {
+        infraFiles.push({ relPath, srcPath: childUri.fsPath });
+      }
+    }
+  }
+
+  await collectDir(designSrcUri, 'design');
+  await collectDir(layoutsSrcUri, 'layouts');
+
+  // Process each infra file
+  for (const { relPath, srcPath } of infraFiles) {
+    const dstPath = path.join(docFolder, relPath.split('/').join(path.sep));
+    const newHash = hashFile(srcPath);
+    const currentHash = hashFile(dstPath);
+
+    // File unchanged vs new template → nothing to do
+    if (currentHash === newHash) { continue; }
+
+    const storedHash = storedHashes[relPath];
+
+    if (storedHash && currentHash === storedHash) {
+      // User has NOT modified the file — replace silently
+      fs.mkdirSync(path.dirname(dstPath), { recursive: true });
+      fs.copyFileSync(srcPath, dstPath);
+    } else {
+      // User may have modified the file (or no stored hash) → ask
+      const choice = await vscode.window.showQuickPick(
+        [
+          { label: '$(check) Garder le fichier actuel', action: 'keep' },
+          { label: '$(arrow-right) Remplacer par la nouvelle version', action: 'replace' },
+          { label: '$(copy) Backup (.backup) puis remplacer', action: 'backup' }
+        ],
+        {
+          title: `Fichier modifié : ${relPath}`,
+          placeHolder: 'Ce fichier a été modifié localement. Que faire ?'
+        }
+      );
+
+      if (!choice || choice.action === 'keep') {
+        continue;
+      }
+
+      if (choice.action === 'backup') {
+        const backupPath = dstPath + '.backup';
+        if (fs.existsSync(dstPath)) {
+          fs.copyFileSync(dstPath, backupPath);
+        }
+      }
+
+      fs.mkdirSync(path.dirname(dstPath), { recursive: true });
+      fs.copyFileSync(srcPath, dstPath);
+    }
+  }
+
+  // Recompute all infra hashes after replacements
+  const projectUri = vscode.Uri.file(docFolder);
+  return await computeInfraHashes(projectUri);
 }
 
 export async function updateDocument(context: vscode.ExtensionContext): Promise<void> {
@@ -113,6 +246,29 @@ export async function updateDocument(context: vscode.ExtensionContext): Promise<
     if (choice !== 'Écraser') { return; }
   }
 
+  // 6.5 Update infrastructure files
+  const kitUri = await resolveKitUri(context);
+  if (kitUri) {
+    const storedHashes = selected.manifest.fileHashes ?? {};
+    const updatedHashes = await updateInfraFiles(
+      kitUri,
+      templateName,
+      selected.docFolder,
+      storedHashes
+    );
+
+    // Regenerate AI instruction files (always, no dialog needed)
+    const projectUri = vscode.Uri.file(selected.docFolder);
+    await aiInstructions.generate(projectUri, templateName);
+
+    // Persist updated hashes in manifest (version updated below)
+    selected.manifest.fileHashes = updatedHashes;
+  } else {
+    vscode.window.showWarningMessage(
+      'Kit source introuvable — les fichiers d\'infrastructure n\'ont pas été mis à jour.'
+    );
+  }
+
   // 7. Parse CHANGELOG and collect update entries
   const changelogContent = readChangelog(context);
   const entries = changelogContent
@@ -149,6 +305,9 @@ export async function updateDocument(context: vscode.ExtensionContext): Promise<
     templateVersion: latestVersion,
     createdAt: selected.manifest.createdAt
   };
+  if (selected.manifest.fileHashes) {
+    updatedManifest['fileHashes'] = selected.manifest.fileHashes;
+  }
   fs.writeFileSync(
     selected.manifestUri.fsPath,
     JSON.stringify(updatedManifest, null, 2),

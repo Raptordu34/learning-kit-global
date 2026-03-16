@@ -23,6 +23,38 @@ async function findManifests(): Promise<ManifestInfo[]> {
   return results;
 }
 
+export async function shareDocumentDirect(docFolder: string): Promise<void> {
+  const outputPath = path.join(
+    path.dirname(docFolder),
+    path.basename(docFolder) + '-shared.html'
+  );
+
+  if (fs.existsSync(outputPath)) {
+    const choice = await vscode.window.showWarningMessage(
+      `"${path.basename(outputPath)}" existe déjà. Écraser ?`,
+      { modal: true },
+      'Écraser'
+    );
+    if (choice !== 'Écraser') { return; }
+  }
+
+  await vscode.window.withProgress(
+    { location: vscode.ProgressLocation.Notification, title: 'Learning Kit: Export en cours...', cancellable: false },
+    async () => {
+      const html = await bundleDocument(docFolder);
+      fs.writeFileSync(outputPath, html, 'utf-8');
+    }
+  );
+
+  const choice = await vscode.window.showInformationMessage(
+    `Export réussi : ${path.basename(outputPath)}`,
+    'Ouvrir'
+  );
+  if (choice === 'Ouvrir') {
+    await vscode.env.openExternal(vscode.Uri.file(outputPath));
+  }
+}
+
 export async function shareDocument(_context: vscode.ExtensionContext): Promise<void> {
   // 1. Scan manifests
   const manifests = await findManifests();
